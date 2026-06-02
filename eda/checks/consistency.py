@@ -1378,14 +1378,18 @@ def _run_revolving(df: pd.DataFrame, rc: dict, product: str) -> list[Finding]:
 def _lgd_workout_checks(df: pd.DataFrame, findings: list, product: str) -> None:
     """LG12 (actual recovery) and LG13 (imputed from balance Δ)."""
     WINDOW = 36
-    need = ["new_to_dft", "interest_rate", "acct_id", "obs_month"]
-    if not all(_col(df, c) for c in need):
+    need = ["new_to_dft", "acct_id", "obs_month"]
+    missing_need = [c for c in need if not _col(df, c)]
+    if missing_need:
+        print(f"  [LG12/LG13] Skipped: missing columns {missing_need}")
         return
     if not (_col(df, "recovery") or _col(df, "balance")):
+        print(f"  [LG12/LG13] Skipped: missing both recovery and balance")
         return
 
     dft_events = df[df["new_to_dft"] == 1][["acct_id", "obs_month"]].copy()
     if len(dft_events) == 0:
+        print(f"  [LG12/LG13] Skipped: no new_to_dft=1 events found")
         return
 
     bal_col = "next_dft_bal" if _col(df, "next_dft_bal") else "balance"
@@ -1398,9 +1402,12 @@ def _lgd_workout_checks(df: pd.DataFrame, findings: list, product: str) -> None:
     dft_idx = dft_events.set_index("acct_id")
     dft_idx = dft_idx[~dft_idx.index.duplicated(keep="first")]
 
-    merge_cols = ["acct_id", "obs_month", "interest_rate"]
+    merge_cols = ["acct_id", "obs_month"]
+    has_interest = _col(df, "interest_rate")
     has_recovery = _col(df, "recovery")
     has_balance = _col(df, "balance")
+    if has_interest:
+        merge_cols.append("interest_rate")
     if has_recovery:
         merge_cols.append("recovery")
     if has_balance:
@@ -1411,8 +1418,11 @@ def _lgd_workout_checks(df: pd.DataFrame, findings: list, product: str) -> None:
     merged = merged[merged["months_since"] <= WINDOW]
     merged = merged.sort_values(["acct_id", "obs_month"])
 
-    monthly_rate = merged["interest_rate"].clip(lower=0) / 12
-    discount = (1 + monthly_rate) ** merged["months_since"]
+    if has_interest:
+        monthly_rate = merged["interest_rate"].clip(lower=0) / 12
+        discount = (1 + monthly_rate) ** merged["months_since"]
+    else:
+        discount = 1
 
     def _summarize(rates):
         if len(rates) == 0:
