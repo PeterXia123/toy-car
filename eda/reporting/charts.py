@@ -26,7 +26,7 @@ _COLORS = {
 
 def setup_style():
     plt.rcParams.update({
-        "figure.figsize": (12, 6),
+        "figure.figsize": (20, 6),
         "figure.dpi": 150,
         "font.size": 10,
         "axes.grid": True,
@@ -108,7 +108,7 @@ def _plot_binary_indicator_trend(f: Finding, charts_dir: str) -> str | None:
     n = [trend[m]["n_records"] for m in months]
     rate = [trend[m]["value_1"] / trend[m]["n_records"] if trend[m]["n_records"] > 0 else 0 for m in months]
 
-    fig, ax1 = plt.subplots(figsize=(14, 6))
+    fig, ax1 = plt.subplots(figsize=(20, 6))
 
     x = np.arange(len(months))
     width = 0.6
@@ -146,7 +146,7 @@ def _plot_recovery_trend(f: Finding, charts_dir: str) -> str | None:
     avg = [trend[m]["avg"] for m in months]
     total = [trend[m]["sum"] for m in months]
 
-    fig, ax1 = plt.subplots(figsize=(14, 6))
+    fig, ax1 = plt.subplots(figsize=(20, 6))
 
     x = np.arange(len(months))
     ax1.bar(x, total, color=_COLORS["light_blue"], alpha=0.7, label="Recovery Sum")
@@ -182,7 +182,7 @@ def _plot_balance_trend(f: Finding, charts_dir: str) -> str | None:
     means = [trend[m]["mean"] for m in months]
     medians = [trend[m]["median"] for m in months]
 
-    fig, ax = plt.subplots(figsize=(14, 6))
+    fig, ax = plt.subplots(figsize=(20, 6))
 
     ax.plot(range(len(months)), means, marker="o", linewidth=2, color=_COLORS["blue"], label="Mean Balance")
     ax.plot(range(len(months)), medians, marker="s", linewidth=2, color=_COLORS["green"], label="Median Balance")
@@ -211,7 +211,7 @@ def _plot_default_rate_trend(f: Finding, charts_dir: str) -> str | None:
     months = sorted(dft_rate.keys())
     dft_vals = [dft_rate[m] for m in months]
 
-    fig, ax = plt.subplots(figsize=(14, 6))
+    fig, ax = plt.subplots(figsize=(20, 6))
 
     ax.plot(range(len(months)), dft_vals, marker="o", linewidth=2, color=_COLORS["red"], label="Default Rate (ind_dft)")
 
@@ -243,7 +243,7 @@ def _plot_score_distribution(f: Finding, charts_dir: str) -> str | None:
     months = sorted(monthly_mean.keys())
     vals = [monthly_mean[m] for m in months]
 
-    fig, ax = plt.subplots(figsize=(14, 6))
+    fig, ax = plt.subplots(figsize=(20, 6))
 
     ax.plot(range(len(months)), vals, marker="o", linewidth=2, color=_COLORS["purple"])
     ax.set_ylabel("Mean Score")
@@ -276,7 +276,7 @@ def _plot_account_count(f: Finding, charts_dir: str) -> str | None:
     months = sorted(counts.keys())
     vals = [counts[m] for m in months]
 
-    fig, ax = plt.subplots(figsize=(14, 6))
+    fig, ax = plt.subplots(figsize=(20, 6))
 
     ax.bar(range(len(months)), vals, color=_COLORS["blue"], alpha=0.8)
     ax.set_ylabel("Record Count")
@@ -304,7 +304,7 @@ def _plot_censored_accounts(f: Finding, charts_dir: str) -> str | None:
     disappeared = [trend[m]["disappeared"] for m in months]
     active = [trend[m]["active"] for m in months]
 
-    fig, ax1 = plt.subplots(figsize=(14, 6))
+    fig, ax1 = plt.subplots(figsize=(20, 6))
 
     x = np.arange(len(months))
     bars = ax1.bar(x, rates, color=_COLORS["orange"], alpha=0.8, width=0.7)
@@ -383,7 +383,7 @@ def _plot_score_default_monotonicity(f: Finding, charts_dir: str) -> str | None:
     segments = sorted(seg_rates.keys(), key=lambda x: int(x))
     rates = [seg_rates[s] for s in segments]
 
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(20, 6))
 
     colors = [_COLORS["green"] if i == 0 or rates[i] <= rates[i-1]
               else _COLORS["red"] for i in range(len(rates))]
@@ -421,7 +421,7 @@ def _plot_dpd_trend(f: Finding, charts_dir: str) -> str | None:
     medians = [trend[m]["median"] for m in months]
     p90s = [trend[m]["p90"] for m in months]
 
-    fig, ax = plt.subplots(figsize=(14, 6))
+    fig, ax = plt.subplots(figsize=(20, 6))
 
     ax.plot(range(len(months)), means, marker="o", linewidth=2, color=_COLORS["blue"], label="Mean DPD")
     ax.plot(range(len(months)), medians, marker="s", linewidth=2, color=_COLORS["green"], label="Median DPD")
@@ -450,7 +450,7 @@ def _plot_perf_lvl_distribution(f: Finding, charts_dir: str) -> str | None:
     df_dist = pd.DataFrame(dist).T
     df_dist = df_dist.sort_index()
 
-    fig, ax = plt.subplots(figsize=(14, 6))
+    fig, ax = plt.subplots(figsize=(20, 6))
 
     colors = [_COLORS["green"], _COLORS["red"], _COLORS["orange"], _COLORS["grey"], _COLORS["purple"]]
     bottom = np.zeros(len(df_dist))
@@ -486,7 +486,7 @@ def _plot_segment_default_trend(f: Finding, charts_dir: str) -> str | None:
 
     palette = ["#4C72B0", "#55A868", "#C44E52", "#8172B2", "#CCB974"]
 
-    fig, ax = plt.subplots(figsize=(14, 5))
+    fig, ax = plt.subplots(figsize=(20, 5))
     ax.set_facecolor("#FAFAFA")
 
     for i, (seg, rates) in enumerate(sorted(seg_rates.items(), key=lambda x: int(x[0]))):
@@ -535,7 +535,7 @@ def _plot_disappear_classification(f: Finding, charts_dir: str) -> str | None:
     pcts = [dist.get(c, {}).get("pct", 0) for c in categories]
     colors = [palette[c] for c in categories]
 
-    fig, ax = plt.subplots(figsize=(10, 4))
+    fig, ax = plt.subplots(figsize=(20, 5))
     ax.set_facecolor("#FAFAFA")
 
     bars = ax.barh(categories, counts, color=colors, height=0.55, edgecolor="white", linewidth=0.5)
@@ -571,7 +571,7 @@ def _plot_loan_term_distribution(f: Finding, charts_dir: str) -> str | None:
     avg_term = f.stats.get("avg_term")
     avg_acct = f.stats.get("avg_term_per_account")
 
-    fig, ax = plt.subplots(figsize=(12, 5))
+    fig, ax = plt.subplots(figsize=(20, 5))
     ax.set_facecolor("#FAFAFA")
 
     bars = ax.bar(range(len(buckets)), counts, color="#4C72B0", width=0.7, edgecolor="white", linewidth=0.5)
@@ -618,7 +618,7 @@ def _plot_utilization_distribution(f: Finding, charts_dir: str) -> str | None:
     mean_u = f.stats.get("mean_util")
     median_u = f.stats.get("median_util")
 
-    fig, ax = plt.subplots(figsize=(12, 5))
+    fig, ax = plt.subplots(figsize=(20, 5))
     ax.set_facecolor("#FAFAFA")
 
     colors = ["#4C72B0"] * (len(buckets) - 1) + ["#C44E52"] if len(buckets) > 1 else ["#4C72B0"]
@@ -676,7 +676,7 @@ def _plot_mths_to_dft_trend(f: Finding, charts_dir: str) -> str | None:
     means = [trend[m]["mean"] for m in months]
     medians = [trend[m]["median"] for m in months]
 
-    fig, ax = plt.subplots(figsize=(12, 5))
+    fig, ax = plt.subplots(figsize=(20, 5))
     ax.set_facecolor("#FAFAFA")
 
     ax.plot(range(len(months)), means, color="#4C72B0", linewidth=1.5, label="Mean")
@@ -711,7 +711,7 @@ def _plot_score_missing_trend(f: Finding, charts_dir: str) -> str | None:
     months = sorted(per_month.keys())
     vals = [per_month[m] for m in months]
 
-    fig, ax = plt.subplots(figsize=(14, 5))
+    fig, ax = plt.subplots(figsize=(20, 5))
     ax.plot(range(len(months)), vals, marker="o", linewidth=2, color=_COLORS["red"])
     ax.fill_between(range(len(months)), vals, alpha=0.15, color=_COLORS["red"])
     ax.set_xticks(range(len(months)))
@@ -743,7 +743,7 @@ def _plot_loan_value_trend(f: Finding, charts_dir: str) -> str | None:
     means = [trend[m]["mean"] for m in months]
     medians = [trend[m]["median"] for m in months]
 
-    fig, ax = plt.subplots(figsize=(14, 5))
+    fig, ax = plt.subplots(figsize=(20, 5))
     ax.plot(range(len(months)), means, marker="o", linewidth=2, color=_COLORS["blue"], label="Mean")
     ax.plot(range(len(months)), medians, marker="s", linewidth=2, color=_COLORS["green"], label="Median")
     ax.set_xticks(range(len(months)))
@@ -771,7 +771,7 @@ def _plot_restructure_trend(f: Finding, charts_dir: str) -> str | None:
     months = sorted(trend.keys())
     vals = [trend[m] for m in months]
 
-    fig, ax = plt.subplots(figsize=(14, 5))
+    fig, ax = plt.subplots(figsize=(20, 5))
     ax.bar(range(len(months)), vals, color=_COLORS["orange"], alpha=0.8, width=0.7)
     ax.set_xticks(range(len(months)))
     ax.set_xticklabels([str(m)[:7] for m in months], rotation=45, ha="right")
@@ -802,7 +802,7 @@ def _plot_interest_rate_trend(f: Finding, charts_dir: str) -> str | None:
     means = [trend[m]["mean"] for m in months]
     medians = [trend[m]["median"] for m in months]
 
-    fig, ax = plt.subplots(figsize=(14, 5))
+    fig, ax = plt.subplots(figsize=(20, 5))
     ax.plot(range(len(months)), means, marker="o", linewidth=2, color=_COLORS["blue"], label="Mean")
     ax.plot(range(len(months)), medians, marker="s", linewidth=2, color=_COLORS["green"], label="Median")
     ax.set_xticks(range(len(months)))
@@ -830,7 +830,7 @@ def _plot_credit_limit_trend(f: Finding, charts_dir: str) -> str | None:
     months = sorted(trend.keys())
     means = [trend[m]["mean"] for m in months]
 
-    fig, ax = plt.subplots(figsize=(14, 5))
+    fig, ax = plt.subplots(figsize=(20, 5))
     ax.plot(range(len(months)), means, marker="o", linewidth=2, color=_COLORS["purple"])
     ax.set_xticks(range(len(months)))
     ax.set_xticklabels([str(m)[:7] for m in months], rotation=45, ha="right")
@@ -855,7 +855,7 @@ def _plot_lgd_workout(f: Finding, charts_dir: str) -> str | None:
         return None
 
     n_total = overall.get("count", 0)
-    fig, ax1 = plt.subplots(figsize=(10, 6))
+    fig, ax1 = plt.subplots(figsize=(20, 6))
 
     months = sorted(cohort.keys())
     x = np.arange(len(months))
