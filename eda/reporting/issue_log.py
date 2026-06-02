@@ -6,7 +6,7 @@ import openpyxl
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
-from mva.models import Finding, SECTION_ORDER
+from eda.models import Finding, SECTION_ORDER
 
 
 _FILL_HIGH = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
@@ -36,7 +36,7 @@ _HEADERS = [
     "Variable",
     "Downstream Impact",
     "Chart",
-    "MVA Comments",
+    "Comments",
     "EST Comments",
 ]
 
@@ -50,7 +50,7 @@ _COL_WIDTHS = {
     "Variable": 14,
     "Downstream Impact": 25,
     "Chart": 20,
-    "MVA Comments": 30,
+    "Comments": 30,
     "EST Comments": 30,
 }
 

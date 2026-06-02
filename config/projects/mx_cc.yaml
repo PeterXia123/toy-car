@@ -6,7 +6,7 @@ project:
   entity: ATL
 
 data:
-  path: "IFRS9/MexiCO/RM/Data/1_Data_Prep/output/"
+  path: "data/mx_cc/"
   file: "MX__RM_perf.parquet"
   format: parquet
 

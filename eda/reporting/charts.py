@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import numpy as np
 
-from mva.models import Finding
+from eda.models import Finding
 
 
 _COLORS = {

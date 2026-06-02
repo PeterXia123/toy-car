@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""MVA Validator — IFRS 9 ECL Model Validation Automation"""
+"""EDA Toolkit — Automated data quality and consistency checks"""
 
 from __future__ import annotations
 
 import argparse
 import sys
 
-from mva.engine import run_validation
-from mva.loader import load_checks_config
+from eda.engine import run_validation
+from eda.loader import load_checks_config
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="MVA Validator: Automated IFRS 9 ECL data quality and consistency checks",
+        description="EDA Toolkit: Automated data quality and consistency checks",
     )
     parser.add_argument(
         "--project", required=True,

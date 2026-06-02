@@ -6,8 +6,8 @@ import tempfile
 import pandas as pd
 import pytest
 
-from mva.checks import data_quality, consistency, trends
-from mva.reporting import charts, issue_log
+from eda.checks import data_quality, consistency, trends
+from eda.reporting import charts, issue_log
 
 
 class TestDataQuality:

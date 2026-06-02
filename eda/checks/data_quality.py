@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from mva.models import Finding, VariableInfo
+from eda.models import Finding, VariableInfo
 
 
 _REQUIRED_COLUMNS = {

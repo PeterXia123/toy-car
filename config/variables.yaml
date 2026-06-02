@@ -89,7 +89,7 @@ variables:
   dt_opened:
     type: Date
     description: "Account open date"
-    downstream: [Data, Score_Alignment, DF, ERL, SICR, ECL]
+    downstream: [Data, Score_Alignment, DF, ERL, SICR, Downstream]
 
   maturity_dt:
     type: Date

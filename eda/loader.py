@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from mva.models import ProjectConfig, VariableInfo
+from eda.models import ProjectConfig, VariableInfo
 
 
 def load_yaml(path: str) -> dict:

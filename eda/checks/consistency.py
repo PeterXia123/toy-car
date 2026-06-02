@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from mva.models import Finding, VariableInfo
+from eda.models import Finding, VariableInfo
 
 
 def _enabled(checks_cfg: dict, section: str, name: str) -> bool:
@@ -453,7 +453,7 @@ def _run_score_alignment_checks(df: pd.DataFrame, sa_cfg: dict, product: str) ->
                 question=(
                     f"Score `{score_col}` violates monotonicity in {violations} out of "
                     f"{len(seg_rates)-1} adjacent segment pairs (tolerance: {mono_tol}). "
-                    f"This suggests the score may not align well with the IFRS 9 default definition."
+                    f"This suggests the score may not align well with the expected default definition."
                 ),
                 check_id="SA1", variable=score_col,
                 stats={"segment_default_rates": {int(k): round(float(v), 4) for k, v in seg_rates.items()},

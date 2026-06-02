@@ -4,15 +4,15 @@ import os
 import sys
 from datetime import datetime
 
-from mva.loader import (
+from eda.loader import (
     load_checks_config,
     load_data,
     load_project_config,
     load_variables_config,
 )
-from mva.models import Finding, finding_sort_key
-from mva.checks import data_quality, consistency, trends
-from mva.reporting import charts, issue_log, html_report
+from eda.models import Finding, finding_sort_key
+from eda.checks import data_quality, consistency, trends
+from eda.reporting import charts, issue_log, html_report
 
 
 def run_validation(
@@ -33,7 +33,7 @@ def run_validation(
     variables_cfg = load_variables_config(variables_config_path)
 
     print(f"{'='*60}")
-    print(f"MVA Validator — {project_cfg.name}")
+    print(f"EDA Toolkit — {project_cfg.name}")
     print(f"{'='*60}")
     print(f"Country: {project_cfg.country} | Product: {project_cfg.product} | Type: {project_cfg.product_type}")
     print(f"Loading data...")

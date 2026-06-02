@@ -143,7 +143,7 @@ def synthetic_df() -> pd.DataFrame:
 
 @pytest.fixture
 def variables_cfg():
-    from mva.models import VariableInfo
+    from eda.models import VariableInfo
     return {
         "obs_month": VariableInfo(name="obs_month", var_type="Date", downstream=["ALL"]),
         "acct_id": VariableInfo(name="acct_id", var_type="ID", downstream=["ALL"]),
@@ -171,6 +171,6 @@ def variables_cfg():
 @pytest.fixture
 def checks_cfg():
     import os
-    from mva.loader import load_checks_config
+    from eda.loader import load_checks_config
     base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     return load_checks_config(os.path.join(base, "config", "checks.yaml"))

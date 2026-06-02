@@ -6,7 +6,7 @@ from datetime import date
 
 import re
 
-from mva.models import Finding, SECTION_ORDER
+from eda.models import Finding, SECTION_ORDER
 
 
 def generate(findings: list[Finding], output_path: str, project_name: str = "") -> str:
@@ -142,7 +142,7 @@ _TEMPLATE = """<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MVA Validation Report — {project_name}</title>
+<title>Data Quality Report — {project_name}</title>
 <style>
   :root {{
     --high: #e74c3c; --high-bg: #fdecea;
@@ -225,7 +225,7 @@ _TEMPLATE = """<!DOCTYPE html>
 <div class="container">
 
   <div class="header">
-    <h1>MVA Validation Report</h1>
+    <h1>Data Quality Report</h1>
     <div class="meta">{project_name} &nbsp;|&nbsp; Generated: {date}</div>
   </div>
 
