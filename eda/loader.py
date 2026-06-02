@@ -93,6 +93,10 @@ def _normalize_indicators(df: pd.DataFrame) -> pd.DataFrame:
     for col in indicator_cols:
         if col in df.columns and df[col].dtype == np.float64:
             df[col] = df[col].fillna(0).astype(np.int8)
+
+    if "recovery" in df.columns:
+        df["recovery"] = df["recovery"].fillna(0)
+
     return df
 
 
