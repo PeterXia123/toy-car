@@ -1,0 +1,49 @@
+project:
+  name: "MX Mortgage Validation"
+  country: MX
+  product: MG
+  product_type: term
+  entity: "BNS-MOR"
+
+data:
+  # 修改为你的parquet文件实际路径
+  path: ""
+  file: "/path/to/your/mx_mortgage_perf.parquet"
+  format: parquet
+
+column_mapping:
+  # 标准名: 实际parquet列名
+  obs_month: obs_month
+  acct_id: acct_id
+  dpd: dpd
+  cpd: cyc_pst_due
+  balance: balance
+  recovery: recovery
+  ind_dft: ind_dft
+  ind_CO: ind_CO
+  ind_closed: ind_closed
+  new_to_dft: new_to_dft
+  lag_ind_dft: lag_ind_dft
+  score_orig: score_orig
+  score_bhv: score_bhv
+  dt_opened: dt_opened
+  mob: mob
+  interest_rate: interest_rate
+  perf_lvl1: perf_lvl1
+  perf_lvl2: perf_lvl2
+  maturity_dt: maturity_dt
+  ln_term: ln_term
+  remaining_term: remaining_term
+  ind_restructure: ind_restructure
+  ln_value: ln_value
+  booked_amt: booked_amt
+  ind_excl: ind_excl
+  next_dft_bal: next_dft_bal
+  mths_to_dft: mths_to_dft
+
+filters: {}
+
+output:
+  directory: "output/mx_mg/"
+  issue_log: "Issue_Log_MX_MG.xlsx"
+  charts_dir: "output/mx_mg/charts/"

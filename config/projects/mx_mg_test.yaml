@@ -1,0 +1,46 @@
+project:
+  name: "MX Mortgage - Synthetic Test"
+  country: MX
+  product: MG
+  product_type: term
+  entity: "Test Entity"
+
+data:
+  path: "test_data"
+  file: "mx_mg_synthetic.parquet"
+  format: parquet
+
+column_mapping:
+  obs_month: obs_month
+  acct_id: acct_id
+  dpd: dpd
+  cpd: cpd
+  balance: balance
+  recovery: recovery
+  ind_dft: ind_dft
+  ind_CO: ind_CO
+  ind_closed: ind_closed
+  new_to_dft: new_to_dft
+  lag_ind_dft: lag_ind_dft
+  score_orig: score_orig
+  score_bhv: score_bhv
+  dt_opened: dt_opened
+  mob: mob
+  interest_rate: interest_rate
+  perf_lvl1: perf_lvl1
+  perf_lvl2: perf_lvl2
+  maturity_dt: maturity_dt
+  ln_term: ln_term
+  remaining_term: remaining_term
+  ln_value: ln_value
+  booked_amt: booked_amt
+  ind_restructure: ind_restructure
+  next_dft_bal: next_dft_bal
+  mths_to_dft: mths_to_dft
+
+filters: {}
+
+output:
+  directory: "output/mx_mg_test/"
+  issue_log: "Issue_Log_MX_MG_Test.xlsx"
+  charts_dir: "output/mx_mg_test/charts/"

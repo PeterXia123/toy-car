@@ -1,0 +1,245 @@
+data_quality:
+  missing_values:
+    enabled: true
+    threshold: 0.05
+    impact: Low
+    parameter: Data
+
+  negative_values:
+    enabled: true
+    impact: Low
+    parameter: Data
+
+  record_count_drop:
+    enabled: true
+    threshold: 0.10
+    impact: High
+    parameter: Data
+
+  extreme_values:
+    enabled: false
+    method: iqr
+    iqr_multiplier: 3.0
+    zscore_threshold: 3.0
+    impact: Low
+    parameter: Data
+
+  dtype_check:
+    enabled: true
+    impact: Low
+    parameter: Data
+
+consistency:
+  perf_lvl_logic:
+    enabled: true
+    impact: Low
+    parameter: Data
+
+  dpd_chargeoff:
+    enabled: false
+    impact: Low
+    parameter: Data
+
+  default_derivation:
+    enabled: false
+    impact: Low
+    parameter: Data
+
+  consecutive_defaults:
+    enabled: true
+    impact: Low
+    parameter: PD
+
+  closed_temporal:
+    enabled: true
+    impact: Low
+    parameter: [ERL, LGD]
+
+  chargeoff_temporal:
+    enabled: true
+    impact: Low
+    parameter: [LGD]
+
+  closed_vs_chargeoff:
+    enabled: true
+    impact: Low
+    parameter: [LGD, ERL]
+
+  closed_vs_balance:
+    enabled: true
+    impact: Low
+    parameter: [LGD]
+
+  post_close_chargeoff:
+    enabled: true
+    impact: Low
+    parameter: [LGD, ERL]
+
+  dpd_missing_with_chargeoff:
+    enabled: true
+    impact: Low
+    parameter: [PD, Data]
+
+  next_dft_bal:
+    enabled: true
+    impact: Low
+    parameter: [LGD, EAD]
+
+  mths_to_dft:
+    enabled: true
+    impact: Low
+    parameter: [PD, DF]
+
+score_alignment:
+  enabled: true
+  score_columns: [score_orig, score_bhv]
+  default_column: ind_dft
+  n_segments: 10
+  monotonicity_tolerance: 1
+  max_high_score_default_rate: 0.02
+  impact: Medium
+  parameter: [Score_Alignment, PD, SICR]
+
+trends:
+  time_series:
+    enabled: false
+    variables: [ind_closed, ind_CO, recovery, balance, dpd]
+    group_by: obs_month
+    detect_anomaly: true
+    anomaly_method: zscore
+    anomaly_threshold: 2.5
+    impact: Low
+    parameter: Data
+
+  default_rate_trend:
+    enabled: true
+    impact: Low
+    parameter: PD
+
+  score_distribution_drift:
+    enabled: true
+    score_columns: [score_orig, score_bhv]
+    impact: High
+    parameter: Score_Alignment
+
+account_tracking:
+  right_censoring:
+    enabled: true
+    impact: Medium
+    parameter: [ERL, DF, LGD]
+
+  record_gaps:
+    enabled: true
+    max_allowed_gap_months: 1
+    impact: Low
+    parameter: [Data, ERL]
+
+  single_record:
+    enabled: false
+    impact: Low
+    parameter: [ERL, PD]
+
+  incomplete_month:
+    enabled: true
+    min_account_ratio: 0.5
+    impact: Low
+    parameter: Data
+
+  post_default_tracking:
+    enabled: false
+    min_post_default_months: 12
+    impact: Low
+    parameter: LGD
+
+  disappear_profile:
+    enabled: true
+    impact: Medium
+    parameter: PD
+
+  left_censoring:
+    enabled: true
+    impact: Medium
+    parameter: Data
+
+term_checks:
+  product_type: term
+  applies_to: [AL, MG, MTG, MORTGAGE, AUTO]
+
+  maturity_missing:
+    enabled: true
+    impact: Low
+    parameter: [DF, ERL]
+
+  maturity_before_opened:
+    enabled: true
+    impact: Low
+    parameter: [DF, ERL]
+
+  maturity_passed_but_open:
+    enabled: true
+    impact: Low
+    parameter: [ERL]
+
+  maturity_temporal_consistency:
+    enabled: false
+    impact: Low
+    parameter: [DF]
+
+  loan_term_range:
+    enabled: true
+    ranges:
+      AL: [12, 84]
+      MG: [60, 360]
+      MTG: [60, 360]
+      default: [1, 600]
+    impact: Low
+    parameter: [DF, ERL]
+
+  loan_term_growth:
+    enabled: false
+    impact: Low
+    parameter: [ERL]
+
+  remaining_term_negative:
+    enabled: true
+    impact: Low
+    parameter: [DF]
+
+  term_consistency:
+    enabled: true
+    impact: Low
+    parameter: [DF]
+
+  remaining_term_vs_maturity:
+    enabled: true
+    impact: Low
+    parameter: [DF, ERL]
+
+revolving_checks:
+  product_type: revolving
+  applies_to: [CC, TLCR, LOC, REVOLVING]
+
+  limit_missing:
+    enabled: true
+    impact: Low
+    parameter: [EAD]
+
+  limit_zero_or_negative:
+    enabled: true
+    impact: Low
+    parameter: [EAD]
+
+  limit_extreme:
+    enabled: true
+    impact: Low
+    parameter: [EAD]
+
+  utilization_distribution:
+    enabled: true
+    impact: Low
+    parameter: [EAD]
+
+  limit_temporal:
+    enabled: true
+    impact: Low
+    parameter: [EAD]

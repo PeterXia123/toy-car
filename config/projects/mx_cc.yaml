@@ -1,0 +1,47 @@
+project:
+  name: "MX Credit Card"
+  country: MX
+  product: CC
+  product_type: revolving
+  entity: ATL
+
+data:
+  path: "IFRS9/MexiCO/RM/Data/1_Data_Prep/output/"
+  file: "MX__RM_perf.parquet"
+  format: parquet
+
+column_mapping:
+  obs_month: obs_month
+  acct_id: acct_id
+  dpd: dpd
+  cpd: cyc_pst_due
+  balance: balance
+  ind_closed: ind_closed
+  ind_CO: ind_CO
+  ind_dft: ind_dft
+  lag_ind_dft: lag_ind_dft
+  new_to_dft: new_to_dft
+  score_orig: score_orig
+  score_bhv: score_bhv
+  perf_lvl1: perf_lvl1
+  perf_lvl2: perf_lvl2
+  dt_opened: dt_opened
+  maturity_dt: maturity_dt
+  ln_term: ln_term
+  remaining_term: remaining_term
+  mob: mob
+  recovery: recovery
+  interest_rate: interest_rate
+  ln_value: ln_value
+  booked_amt: booked_amt
+  ind_restructure: ind_restructure
+  credit_limit: current_limit
+
+filters:
+  exclude_months: []
+  perf_lvl1_filter: null
+
+output:
+  directory: "output/MX_CC/"
+  issue_log: "MX_CC_Issue_Log.xlsx"
+  charts_dir: "output/MX_CC/charts/"
