@@ -174,25 +174,28 @@ def _check_censored_trend(
         return []
 
     indicator_cols = [c for c in ["ind_closed", "ind_CO", "ind_dft"] if c in df.columns]
-    accts_by_month = df.groupby("obs_month", observed=True)["acct_id"].apply(set)
+    acct_months = df[["acct_id", "obs_month"]].drop_duplicates()
+    present = acct_months.groupby("obs_month", observed=True)["acct_id"].count()
     trend = {}
     for i in range(len(months) - 1):
         m_curr, m_next = months[i], months[i + 1]
-        accts_curr = accts_by_month.get(m_curr, set())
-        accts_next = accts_by_month.get(m_next, set())
-        disappeared = accts_curr - accts_next
-        if not disappeared or not accts_curr:
-            trend[str(m_curr)] = {"disappeared": 0, "active": len(accts_curr), "rate": 0.0}
+        n_active = int(present.get(m_curr, 0))
+        curr_accts = acct_months.loc[acct_months["obs_month"] == m_curr, "acct_id"]
+        next_accts = acct_months.loc[acct_months["obs_month"] == m_next, "acct_id"]
+        merged = curr_accts.to_frame().merge(next_accts.to_frame(), on="acct_id", how="left", indicator=True)
+        gone_ids = merged.loc[merged["_merge"] == "left_only", "acct_id"]
+        if len(gone_ids) == 0 or n_active == 0:
+            trend[str(m_curr)] = {"disappeared": 0, "active": n_active, "rate": 0.0}
             continue
-        dis_records = df.loc[(df["acct_id"].isin(disappeared)) & (df["obs_month"] == m_curr)]
+        dis_records = df.loc[(df["acct_id"].isin(gone_ids.values)) & (df["obs_month"] == m_curr)]
         explained_mask = pd.Series(False, index=dis_records.index)
         for col in indicator_cols:
             explained_mask = explained_mask | (dis_records[col] == 1)
         n_unexplained = int((~explained_mask).sum())
         trend[str(m_curr)] = {
             "disappeared": n_unexplained,
-            "active": len(accts_curr),
-            "rate": round(n_unexplained / len(accts_curr), 4),
+            "active": n_active,
+            "rate": round(n_unexplained / n_active, 4),
         }
 
     total_unexplained = sum(v["disappeared"] for v in trend.values())
