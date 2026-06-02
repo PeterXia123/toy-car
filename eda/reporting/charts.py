@@ -489,18 +489,23 @@ def _plot_segment_default_trend(f: Finding, charts_dir: str) -> str | None:
     fig, ax = plt.subplots(figsize=(20, 5))
     ax.set_facecolor("#FAFAFA")
 
+    all_vals = []
     for i, (seg, rates) in enumerate(sorted(seg_rates.items(), key=lambda x: int(x[0]))):
         months = sorted(rates.keys())
         vals = [rates[m] for m in months]
+        all_vals.extend(vals)
         label = seg_labels.get(str(seg), seg_labels.get(int(seg), f"Seg {seg}"))
         ax.plot(range(len(months)), vals, linewidth=2, color=palette[i % len(palette)],
-                label=f"{label}", alpha=0.85)
+                label=f"{label}", alpha=0.85, marker="o", markersize=3)
 
     months = sorted(list(seg_rates.values())[0].keys())
     ax.set_xticks(range(len(months)))
     ax.set_xticklabels([m[:7] for m in months], rotation=45, ha="right", fontsize=8)
     ax.yaxis.set_major_formatter(mticker.PercentFormatter(1.0))
     ax.set_ylabel("Default Rate", fontsize=10)
+    if all_vals:
+        y_max = max(all_vals)
+        ax.set_ylim(bottom=0, top=max(y_max * 1.3, 0.01))
     ax.set_xlabel("")
     ax.grid(axis="y", alpha=0.25, linewidth=0.5)
     ax.grid(axis="x", alpha=0.1, linewidth=0.5)
