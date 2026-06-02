@@ -106,6 +106,7 @@ def _plot_binary_indicator_trend(f: Finding, charts_dir: str) -> str | None:
     v0 = [trend[m]["value_0"] for m in months]
     v1 = [trend[m]["value_1"] for m in months]
     n = [trend[m]["n_records"] for m in months]
+    rate = [trend[m]["value_1"] / trend[m]["n_records"] if trend[m]["n_records"] > 0 else 0 for m in months]
 
     fig, ax1 = plt.subplots(figsize=(14, 6))
 
@@ -119,8 +120,9 @@ def _plot_binary_indicator_trend(f: Finding, charts_dir: str) -> str | None:
     ax1.set_xticklabels([str(m)[:7] for m in months], rotation=45, ha="right")
 
     ax2 = ax1.twinx()
-    ax2.plot(x, n, color=_COLORS["dark_blue"], marker="o", linewidth=2, label="Total Records")
-    ax2.set_ylabel("Total Records")
+    ax2.plot(x, rate, color=_COLORS["dark_blue"], marker="o", linewidth=2, label=f"{f.variable}=1 Rate")
+    ax2.set_ylabel(f"{f.variable}=1 Rate")
+    ax2.yaxis.set_major_formatter(mticker.PercentFormatter(1.0))
 
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
