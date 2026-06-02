@@ -58,8 +58,7 @@ def load_data(project: ProjectConfig) -> pd.DataFrame:
     df = _normalize_obs_month(df)
     df = _normalize_indicators(df)
     df = apply_filters(df, project.filters)
-    if "acct_id" in df.columns:
-        df["acct_id"] = df["acct_id"].astype("category")
+    df = _optimize_dtypes(df)
     return df
 
 
@@ -85,7 +84,7 @@ def _normalize_obs_month(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _normalize_indicators(df: pd.DataFrame) -> pd.DataFrame:
-    """Fill NaN in binary indicator columns with 0 so comparisons work."""
+    """Fill NaN in binary indicator columns with 0 and downcast to int8."""
     indicator_cols = [
         "ind_closed", "ind_CO", "ind_dft", "ind_excl",
         "new_to_dft", "new_to_CO", "lag_ind_dft", "lag_ind_CO",
@@ -93,7 +92,31 @@ def _normalize_indicators(df: pd.DataFrame) -> pd.DataFrame:
     ]
     for col in indicator_cols:
         if col in df.columns and df[col].dtype == np.float64:
-            df[col] = df[col].fillna(0).astype(np.int64)
+            df[col] = df[col].fillna(0).astype(np.int8)
+    return df
+
+
+def _optimize_dtypes(df: pd.DataFrame) -> pd.DataFrame:
+    """Downcast numeric columns and convert low-cardinality objects to category."""
+    for col in df.select_dtypes(include=["int64"]).columns:
+        col_min, col_max = df[col].min(), df[col].max()
+        if col_min >= -128 and col_max <= 127:
+            df[col] = df[col].astype(np.int8)
+        elif col_min >= -32768 and col_max <= 32767:
+            df[col] = df[col].astype(np.int16)
+        elif col_min >= -2147483648 and col_max <= 2147483647:
+            df[col] = df[col].astype(np.int32)
+
+    for col in df.select_dtypes(include=["float64"]).columns:
+        df[col] = pd.to_numeric(df[col], downcast="float")
+
+    for col in df.select_dtypes(include=["object"]).columns:
+        if df[col].nunique() / len(df) < 0.5:
+            df[col] = df[col].astype("category")
+
+    if "acct_id" in df.columns and df["acct_id"].dtype != "category":
+        df["acct_id"] = df["acct_id"].astype("category")
+
     return df
 
 

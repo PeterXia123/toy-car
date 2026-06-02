@@ -40,10 +40,20 @@ def run_validation(
 
     df = load_data(project_cfg)
 
-    # Reduce memory: convert object columns to category where beneficial
-    for col in df.select_dtypes(include=["object"]).columns:
-        if df[col].nunique() / len(df) < 0.5:
-            df[col] = df[col].astype("category")
+    # Keep only columns used by checks — drop everything else to save memory
+    keep_cols = set(variables_cfg.keys()) | {
+        "obs_month", "acct_id", "perf_lvl1", "perf_lvl2",
+        "ind_dft", "ind_closed", "ind_CO", "ind_excl",
+        "new_to_dft", "lag_ind_dft", "lag_ind_CO", "new_to_CO",
+        "ind_restructure", "dpd", "cpd", "balance", "recovery",
+        "next_dft_bal", "mths_to_dft", "dt_opened", "mob",
+        "score_orig", "score_bhv", "interest_rate",
+        "ln_term", "ln_value", "booked_amt", "maturity_dt",
+        "remaining_term", "credit_limit",
+    }
+    drop_cols = [c for c in df.columns if c not in keep_cols]
+    if drop_cols:
+        df = df.drop(columns=drop_cols)
 
     if "acct_id" in df.columns and "obs_month" in df.columns:
         df = df.sort_values(["acct_id", "obs_month"])
@@ -97,6 +107,10 @@ def run_validation(
         categories_run.append("revolving_checks")
 
     _enrich_downstream(findings, variables_cfg)
+
+    # Release data to free memory before report generation
+    del df
+    import gc; gc.collect()
 
     findings.sort(key=finding_sort_key)
 

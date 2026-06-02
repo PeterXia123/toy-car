@@ -102,7 +102,7 @@ def check_missing_values(
         if overall_rate > threshold:
             per_month = {}
             if has_month and monthly_total is not None:
-                monthly_na = df[df[var_name].isna()].groupby("obs_month").size()
+                monthly_na = df[var_name].isna().groupby(df["obs_month"]).sum()
                 monthly_rate = (monthly_na / monthly_total).fillna(0)
                 per_month = {str(k): round(float(v), 4) for k, v in monthly_rate.items()}
 
@@ -124,7 +124,7 @@ def check_missing_values(
         all_monthly = {}
         for var_name in missing_matrix:
             if var_name in df.columns:
-                monthly_na = df[df[var_name].isna()].groupby("obs_month").size()
+                monthly_na = df[var_name].isna().groupby(df["obs_month"]).sum()
                 monthly_rate = (monthly_na / monthly_total).fillna(0)
                 all_monthly[var_name] = {str(k): round(float(v), 4) for k, v in monthly_rate.items()}
 
@@ -168,7 +168,8 @@ def check_negative_values(
             continue
 
         neg_rate = neg_count / len(df)
-        examples = df.loc[neg_mask].head(20)
+        ex_cols = [c for c in ["acct_id", "obs_month", var_name] if c in df.columns]
+        examples = df.loc[neg_mask, ex_cols].head(20)
 
         findings.append(Finding(
             product=product,
@@ -272,7 +273,8 @@ def check_extreme_values(
         if var_info.valid_values is not None:
             continue
 
-        series = df[var_name].dropna()
+        col_data = df[var_name]
+        series = col_data.dropna()
         if len(series) < 10:
             continue
 
@@ -315,7 +317,7 @@ def check_extreme_values(
             ),
             check_id="DQ4",
             variable=var_name,
-            examples=df.loc[outlier_mask].head(20),
+            examples=df.loc[outlier_mask, [c for c in ["acct_id", "obs_month", var_name] if c in df.columns]].head(20),
             stats={"outlier_count": int(outlier_count), "outlier_rate": round(outlier_rate, 4)},
         ))
 

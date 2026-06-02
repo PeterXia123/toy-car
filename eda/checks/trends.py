@@ -174,21 +174,21 @@ def _check_censored_trend(
         return []
 
     indicator_cols = [c for c in ["ind_closed", "ind_CO", "ind_dft"] if c in df.columns]
+    accts_by_month = df.groupby("obs_month", observed=True)["acct_id"].apply(set)
     trend = {}
     for i in range(len(months) - 1):
         m_curr, m_next = months[i], months[i + 1]
-        accts_curr = set(df.loc[df["obs_month"] == m_curr, "acct_id"])
-        accts_next = set(df.loc[df["obs_month"] == m_next, "acct_id"])
+        accts_curr = accts_by_month.get(m_curr, set())
+        accts_next = accts_by_month.get(m_next, set())
         disappeared = accts_curr - accts_next
         if not disappeared or not accts_curr:
             trend[str(m_curr)] = {"disappeared": 0, "active": len(accts_curr), "rate": 0.0}
             continue
-        # Filter out accounts that disappeared for a known reason
-        dis_records = df[(df["acct_id"].isin(disappeared)) & (df["obs_month"] == m_curr)]
-        unexplained = dis_records.copy()
+        dis_records = df.loc[(df["acct_id"].isin(disappeared)) & (df["obs_month"] == m_curr)]
+        explained_mask = pd.Series(False, index=dis_records.index)
         for col in indicator_cols:
-            unexplained = unexplained[unexplained[col] != 1]
-        n_unexplained = len(unexplained)
+            explained_mask = explained_mask | (dis_records[col] == 1)
+        n_unexplained = int((~explained_mask).sum())
         trend[str(m_curr)] = {
             "disappeared": n_unexplained,
             "active": len(accts_curr),
