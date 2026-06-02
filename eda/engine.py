@@ -40,6 +40,11 @@ def run_validation(
 
     df = load_data(project_cfg)
 
+    # Reduce memory: convert object columns to category where beneficial
+    for col in df.select_dtypes(include=["object"]).columns:
+        if df[col].nunique() / len(df) < 0.5:
+            df[col] = df[col].astype("category")
+
     if "acct_id" in df.columns and "obs_month" in df.columns:
         df = df.sort_values(["acct_id", "obs_month"])
 
