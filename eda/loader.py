@@ -110,13 +110,6 @@ def _optimize_dtypes(df: pd.DataFrame) -> pd.DataFrame:
     for col in df.select_dtypes(include=["float64"]).columns:
         df[col] = pd.to_numeric(df[col], downcast="float")
 
-    for col in df.select_dtypes(include=["object"]).columns:
-        if df[col].nunique() / len(df) < 0.5:
-            df[col] = df[col].astype("category")
-
-    if "acct_id" in df.columns and df["acct_id"].dtype != "category":
-        df["acct_id"] = df["acct_id"].astype("category")
-
     return df
 
 
