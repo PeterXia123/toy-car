@@ -130,6 +130,7 @@ account_tracking:
     enabled: true
     impact: Medium
     parameter: [ERL, DF, LGD]
+    spike_threshold: 0.04
 
   record_gaps:
     enabled: true

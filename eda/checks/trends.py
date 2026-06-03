@@ -56,6 +56,7 @@ def run_account_tracking(
 
     if at.get("right_censoring", {}).get("enabled", False):
         findings += _check_censored_trend(df, last_records, global_max, product)
+        findings += _check_attrition_spikes(df, at["right_censoring"], product)
 
     if at.get("single_record", {}).get("enabled", False):
         findings += _check_single_record(df, at["single_record"], product)
@@ -152,22 +153,25 @@ def _build_censored_mask(last_records: pd.DataFrame, global_max) -> pd.Series:
 def _check_right_censoring(
     last_records: pd.DataFrame, global_max, cfg: dict, product: str,
 ) -> list[Finding]:
-    """AT1: Accounts that disappear without closure, chargeoff, or default."""
+    """AT1: Detect attrition spikes that suggest data migration events."""
     impact = cfg.get("impact", "High")
     parameter = cfg.get("parameter", ["ERL", "DF", "LGD"])
+    spike_threshold = cfg.get("spike_threshold", 0.04)
 
     censored_mask = _build_censored_mask(last_records, global_max)
     censored_count = int(censored_mask.sum())
     total_accounts = len(last_records)
     censored_rate = censored_count / total_accounts if total_accounts > 0 else 0
 
-    if censored_count == 0:
-        return []
+    findings: list[Finding] = []
 
-    return [Finding(
+    if censored_count == 0:
+        return findings
+
+    findings.append(Finding(
         product=product,
         parameter=parameter,
-        impact=impact,
+        impact="Low",
         question=(
             f"{censored_count:,} accounts ({censored_rate:.1%}) are right-censored — "
             f"they disappear before the second-to-last observation month without closure, chargeoff, or default. "
@@ -180,6 +184,73 @@ def _check_right_censoring(
             "total_accounts": total_accounts,
             "censored_rate": round(censored_rate, 4),
         },
+    ))
+
+    return findings
+
+
+def _check_attrition_spikes(
+    df: pd.DataFrame, cfg: dict, product: str,
+) -> list[Finding]:
+    """AT10: Flag months where unexplained attrition exceeds spike_threshold — likely data migration."""
+    spike_threshold = cfg.get("spike_threshold", 0.04)
+    parameter = cfg.get("parameter", ["ERL", "DF", "LGD"])
+
+    months = sorted(df["rpt_mth"].unique())
+    if len(months) < 2:
+        return []
+
+    indicator_cols = [c for c in ["fl_close", "fl_wo", "fl_evt"] if c in df.columns]
+    acct_months = df[["eid", "rpt_mth"]].drop_duplicates()
+    present = acct_months.groupby("rpt_mth", observed=True)["eid"].count()
+
+    spikes = []
+    for i in range(len(months) - 1):
+        m_curr, m_next = months[i], months[i + 1]
+        n_active = int(present.get(m_curr, 0))
+        if n_active == 0:
+            continue
+        curr_accts = acct_months.loc[acct_months["rpt_mth"] == m_curr, "eid"]
+        next_accts = acct_months.loc[acct_months["rpt_mth"] == m_next, "eid"]
+        merged = curr_accts.to_frame().merge(next_accts.to_frame(), on="eid", how="left", indicator=True)
+        gone_ids = merged.loc[merged["_merge"] == "left_only", "eid"]
+        if len(gone_ids) == 0:
+            continue
+        dis_records = df.loc[(df["eid"].isin(gone_ids.values)) & (df["rpt_mth"] == m_curr)]
+        explained_mask = pd.Series(False, index=dis_records.index)
+        for col in indicator_cols:
+            explained_mask = explained_mask | (dis_records[col] == 1)
+        n_unexplained = int((~explained_mask).sum())
+        rate = n_unexplained / n_active
+        if rate >= spike_threshold:
+            spikes.append({
+                "month": str(m_curr),
+                "disappeared": n_unexplained,
+                "active": n_active,
+                "rate": round(rate, 4),
+            })
+
+    if not spikes:
+        return []
+
+    spike_months = ", ".join(s["month"][:7] for s in spikes)
+    worst = max(spikes, key=lambda s: s["rate"])
+
+    return [Finding(
+        product=product,
+        parameter=parameter,
+        impact="High",
+        question=(
+            f"{len(spikes)} month(s) have unexplained attrition rate >= {spike_threshold:.0%}: "
+            f"{spike_months}. "
+            f"Worst: {worst['month'][:7]} with {worst['disappeared']:,}/{worst['active']:,} "
+            f"({worst['rate']:.1%}) accounts disappearing. "
+            f"Spikes of this magnitude strongly suggest a data migration or source system change — "
+            f"verify with the data provider whether a system cutover occurred at these snapshots."
+        ),
+        check_id="AT10",
+        variable="eid",
+        stats={"spikes": spikes, "threshold": spike_threshold},
     )]
 
 
