@@ -719,6 +719,35 @@ def _run_lgd_checks(df: pd.DataFrame, checks_cfg: dict, variables_cfg: dict[str,
                                        for k, r in trend.iterrows()}},
         ))
 
+    # LG15: Months with abnormally low recovery
+    if _col(df, "rcv_amt") and _col(df, "rpt_mth"):
+        monthly_avg = df.groupby("rpt_mth")["rcv_amt"].mean()
+        if len(monthly_avg) >= 6 and monthly_avg.std() > 0:
+            z = (monthly_avg - monthly_avg.mean()) / monthly_avg.std()
+            low_months = z[z < -1.5].sort_values()
+            if len(low_months) > 0:
+                month_details = [
+                    {"month": str(m), "avg": round(float(monthly_avg[m]), 2), "z": round(float(zv), 2)}
+                    for m, zv in low_months.items()
+                ]
+                findings.append(Finding(
+                    product=product, parameter="LGD", impact="Medium",
+                    question=(
+                        f"{len(low_months)} months show abnormally low recovery "
+                        f"(z-score < -1.5): "
+                        f"{', '.join(str(m)[:7] for m in low_months.index[:5])}"
+                        f"{'...' if len(low_months) > 5 else ''}. "
+                        f"This may indicate missing recovery data, process disruptions, "
+                        f"or changes in collection strategy."
+                    ),
+                    check_id="LG15", variable="rcv_amt",
+                    stats={
+                        "low_months": month_details,
+                        "overall_mean": round(float(monthly_avg.mean()), 2),
+                        "overall_std": round(float(monthly_avg.std()), 2),
+                    },
+                ))
+
     # LG7: non-default, non-CO accounts with rcv_amt > 0
     if _col(df, "rcv_amt") and _col(df, "fl_evt") and _col(df, "fl_wo"):
         mask = (df["fl_evt"] == 0) & (df["fl_wo"] == 0) & (df["rcv_amt"].notna()) & (df["rcv_amt"] > 0)
