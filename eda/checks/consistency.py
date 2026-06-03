@@ -806,7 +806,18 @@ def _run_lgd_checks(df: pd.DataFrame, checks_cfg: dict, variables_cfg: dict[str,
             stats={"balance_trend": {str(k): {"sum": round(float(r["sum"]), 2), "mean": round(float(r["mean"]), 2), "median": round(float(r["median"]), 2)} for k, r in trend.iterrows()}},
         ))
 
-    # LG11: removed (Keep=N in check inventory)
+    # LG11: Interest rate trend
+    if _col(df, "ann_rate") and _col(df, "rpt_mth"):
+        ir_trend = df.groupby("rpt_mth")["ann_rate"].agg(["mean", "median"])
+        findings.append(Finding(
+            product=product, parameter="LGD", impact="Low",
+            question="Interest rate trend data generated (mean and median by rpt_mth).",
+            check_id="LG11", variable="ann_rate",
+            reference_only=True,
+            stats={"ir_trend": {str(k): {"mean": round(float(r["mean"]), 4),
+                                          "median": round(float(r["median"]), 4)}
+                                 for k, r in ir_trend.iterrows()}},
+        ))
 
     # LG12 & LG13: LGD workout rcv_amt rate
     _lgd_workout_checks(df, findings, product)
