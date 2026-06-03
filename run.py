@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""EDA Toolkit — Automated data quality and consistency checks"""
+# -*- coding: utf-8 -*-
+"""EDA Toolkit - Automated data quality and consistency checks"""
 
 from __future__ import annotations
 

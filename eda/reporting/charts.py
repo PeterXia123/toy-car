@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import annotations
 
 import os
@@ -92,8 +93,8 @@ def generate_all_charts(findings: list[Finding], charts_dir: str) -> None:
                 path = _plot_lgd_workout(f, charts_dir)
             elif f.check_id == "LG14":
                 path = _plot_recovery_pattern(f, charts_dir)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"  [WARN] Chart {f.check_id} failed: {e}")
 
         if path:
             f.chart_path = path
