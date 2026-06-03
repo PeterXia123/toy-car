@@ -457,8 +457,11 @@ def _run_score_alignment_checks(df: pd.DataFrame, sa_cfg: dict, product: str) ->
         if len(valid) < 100:
             continue
 
+        n_unique = valid[score_col].nunique()
+        effective_segments = min(n_segments, max(3, n_unique // 5))
+
         # SA1: Monotonicity
-        valid["segment"] = pd.qcut(valid[score_col], n_segments, labels=False, duplicates="drop")
+        valid["segment"] = pd.qcut(valid[score_col], effective_segments, labels=False, duplicates="drop")
         seg_rates = valid.groupby("segment")[default_col].mean().sort_index()
 
         violations = 0
@@ -486,7 +489,8 @@ def _run_score_alignment_checks(df: pd.DataFrame, sa_cfg: dict, product: str) ->
         if _col(sa_df, "rpt_mth"):
             valid_with_month = sa_df[[score_col, default_col, "rpt_mth"]].dropna()
             if len(valid_with_month) > 100:
-                valid_with_month["segment"] = pd.qcut(valid_with_month[score_col], min(n_segments, 5), labels=False, duplicates="drop")
+                sa3_segs = min(effective_segments, 5)
+                valid_with_month["segment"] = pd.qcut(valid_with_month[score_col], sa3_segs, labels=False, duplicates="drop")
                 heatmap = valid_with_month.groupby(["segment", "rpt_mth"])[default_col].mean().unstack(fill_value=0)
                 findings.append(Finding(
                     product=product, parameter=parameter, impact="Low",
@@ -559,7 +563,7 @@ def _run_score_alignment_checks(df: pd.DataFrame, sa_cfg: dict, product: str) ->
         if _col(sa_df, "rpt_mth"):
             ts_valid = sa_df[[score_col, default_col, "rpt_mth"]].dropna()
             if len(ts_valid) > 200:
-                n_seg = min(n_segments, 5)
+                n_seg = min(effective_segments, 5)
                 ts_valid["segment"] = pd.qcut(
                     ts_valid[score_col], n_seg, labels=False, duplicates="drop"
                 )

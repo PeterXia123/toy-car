@@ -93,7 +93,7 @@ consistency:
 score_alignment:
   enabled: true
   score_columns: [sc_orig, sc_curr]
-  default_column: fl_evt
+  default_column: grp2
   n_segments: 10
   monotonicity_tolerance: 1
   max_high_score_default_rate: 0.02
