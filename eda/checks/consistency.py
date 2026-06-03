@@ -731,7 +731,7 @@ def _run_lgd_checks(df: pd.DataFrame, checks_cfg: dict, variables_cfg: dict[str,
                     for m, zv in low_months.items()
                 ]
                 findings.append(Finding(
-                    product=product, parameter="LGD", impact="Medium",
+                    product=product, parameter="LGD", impact="Low",
                     question=(
                         f"{len(low_months)} months show abnormally low recovery "
                         f"(z-score < -1.5): "
