@@ -55,6 +55,20 @@ def _acct_info(df: pd.DataFrame, mask) -> tuple[str, dict]:
     )
 
 
+def _case_sample(df: pd.DataFrame, mask, cols: list[str]) -> pd.DataFrame | None:
+    """Pick one affected account and return its full history with relevant columns."""
+    if "acct_id" not in df.columns:
+        return None
+    affected = df.loc[mask, "acct_id"]
+    if len(affected) == 0:
+        return None
+    sample_id = affected.iloc[0]
+    base = ["acct_id", "obs_month"]
+    keep = [c for c in base if c in df.columns]
+    keep += [c for c in cols if c in df.columns and c not in keep]
+    return df.loc[df["acct_id"] == sample_id, keep].sort_values("obs_month") if "obs_month" in df.columns else df.loc[df["acct_id"] == sample_id, keep]
+
+
 # ================================================================
 # Top-level runner
 # ================================================================
@@ -166,6 +180,7 @@ def _run_default_logic(df: pd.DataFrame, checks_cfg: dict, product: str) -> list
                 question=q_text,
                 check_id="DF2", variable="dpd",
                 examples=_examples(df, mask, variable="dpd"),
+                case_data=_case_sample(df, mask, ["dpd", "ind_CO", "ind_dft"]),
                 stats={"count": int(count), "rate": round(count / len(df), 4), **extra_stats},
             ))
 
@@ -192,6 +207,7 @@ def _run_default_logic(df: pd.DataFrame, checks_cfg: dict, product: str) -> list
                 ),
                 check_id="DF6", variable="new_to_dft",
                 examples=sample.sort_values(["acct_id", "obs_month"]).head(40),
+                case_data=_case_sample(df, df["acct_id"].isin(multi_accts.index), ["ind_dft", "new_to_dft", "dpd", "perf_lvl1"]),
                 stats={"affected_accounts": int(len(multi_accts)), "total_accounts": total_accts, "account_rate": round(acct_pct, 4)},
             ))
 
@@ -235,6 +251,7 @@ def _run_default_logic(df: pd.DataFrame, checks_cfg: dict, product: str) -> list
                     ),
                     check_id="DF9", variable="cpd",
                     examples=valid.loc[mismatch].head(20) if mismatch.any() else None,
+                    case_data=_case_sample(df, mismatch.reindex(df.index, fill_value=False), ["cpd", "dpd"]) if mismatch.any() else None,
                     stats={"mismatch_count": mismatch_count, "rate": round(rate, 4), **(_acct_info(valid, mismatch)[1] if _col(valid, "acct_id") else {})},
                 ))
 
@@ -266,6 +283,7 @@ def _run_terminal_events(df: pd.DataFrame, checks_cfg: dict, product: str) -> li
                 ),
                 check_id="TE1", variable="ind_closed",
                 examples=examples,
+                case_data=_case_sample(df, (df.groupby("acct_id", observed=True)["ind_closed"].shift(1) == 1) & (df["ind_closed"] == 0), ["ind_closed", "dpd", "balance"]),
                 stats={"violation_accounts": violations, "total_accounts": t, "account_rate": round(violations / t, 4)},
             ))
 
@@ -285,6 +303,7 @@ def _run_terminal_events(df: pd.DataFrame, checks_cfg: dict, product: str) -> li
                 ),
                 check_id="TE2", variable="ind_CO",
                 examples=examples,
+                case_data=_case_sample(df, (df.groupby("acct_id", observed=True)["ind_CO"].shift(1) == 1) & (df["ind_CO"] == 0), ["ind_CO", "ind_closed", "dpd", "balance"]),
                 stats={"violation_accounts": violations, "total_accounts": _total_accounts(df), "account_rate": round(violations / _total_accounts(df), 4)},
             ))
 
@@ -305,6 +324,7 @@ def _run_terminal_events(df: pd.DataFrame, checks_cfg: dict, product: str) -> li
                 ),
                 check_id="TE3", variable="ind_closed",
                 examples=_examples(df, mask, variable="ind_closed"),
+                case_data=_case_sample(df, mask, ["ind_closed", "balance", "dpd"]),
                 stats={"count": int(count), "rate": round(rate, 4), **_acct_info(df, mask)[1]},
             ))
 
@@ -328,6 +348,7 @@ def _run_terminal_events(df: pd.DataFrame, checks_cfg: dict, product: str) -> li
                     f"Affected accounts: {int(violation_count):,} / {_total_accounts(df):,} ({int(violation_count)/_total_accounts(df):.1%})."
                     ),
                     check_id="TE4", variable="ind_CO",
+                    case_data=_case_sample(df, df["acct_id"].isin(post_close_co[post_close_co].index), ["ind_closed", "ind_CO", "balance", "dpd"]),
                     stats={"violation_accounts": int(violation_count), "total_accounts": _total_accounts(df), "account_rate": round(int(violation_count)/df["acct_id"].nunique(), 4)},
                 ))
 
@@ -366,6 +387,7 @@ def _run_terminal_events(df: pd.DataFrame, checks_cfg: dict, product: str) -> li
                     ),
                     check_id="TE6", variable="ind_CO",
                     examples=_examples(df, mask, variable="ind_CO"),
+                    case_data=_case_sample(df, mask, ["ind_CO", "dt_opened"]),
                     stats={"count": count, **_acct_info(df, mask)[1]},
                 ))
 
@@ -588,6 +610,7 @@ def _run_lgd_checks(df: pd.DataFrame, checks_cfg: dict, variables_cfg: dict[str,
                 question=f"Balance has {count:,} negative records ({count/len(df):.2%}). Negative balance may indicate data errors or special account types.",
                 check_id="LG1", variable="balance",
                 examples=_examples(df, mask, variable="balance"),
+                case_data=_case_sample(df, mask, ["balance", "dpd", "ind_dft"]),
                 stats={"count": int(count), **_acct_info(df, mask)[1]},
             ))
 
@@ -600,6 +623,7 @@ def _run_lgd_checks(df: pd.DataFrame, checks_cfg: dict, variables_cfg: dict[str,
                 product=product, parameter="LGD", impact="Low",
                 question=f"{count:,} records have balance=0 but DPD>0. Zero-balance delinquent accounts may affect default definition.",
                 check_id="LG2", variable="balance",
+                case_data=_case_sample(df, mask, ["balance", "dpd", "ind_dft"]),
                 stats={"count": int(count), **_acct_info(df, mask)[1]},
             ))
 
@@ -613,6 +637,7 @@ def _run_lgd_checks(df: pd.DataFrame, checks_cfg: dict, variables_cfg: dict[str,
                 product=product, parameter="LGD", impact="Low",
                 question=f"{count:,} defaulted records ({count/total_dft:.1%} of defaults) have missing balance. Balance at default is required for LGD calculation." + _acct_info(df, mask)[0],
                 check_id="LG3", variable="balance",
+                case_data=_case_sample(df, mask, ["balance", "ind_dft", "recovery"]),
                 stats={"count": int(count), "rate_of_defaults": round(count / total_dft, 4), **_acct_info(df, mask)[1]},
             ))
 
@@ -626,6 +651,7 @@ def _run_lgd_checks(df: pd.DataFrame, checks_cfg: dict, variables_cfg: dict[str,
                 product=product, parameter="LGD", impact="Low",
                 question=f"Recovery field has {neg_count:,} negative values. Negative recovery may indicate reversed payments or data errors." + _acct_info(df, neg_mask)[0],
                 check_id="LG4", variable="recovery",
+                case_data=_case_sample(df, neg_mask, ["recovery", "balance", "ind_dft", "ind_CO"]),
                 stats={"total_negative": int(neg_count),
                        "per_month": {str(k): int(v) for k, v in monthly.items()}, **_acct_info(df, neg_mask)[1]},
             ))
@@ -661,6 +687,7 @@ def _run_lgd_checks(df: pd.DataFrame, checks_cfg: dict, variables_cfg: dict[str,
                     f" Affected accounts: {n_accts:,} / {t:,} ({r:.1%})."
                 ),
                 check_id="LG7", variable="recovery",
+                case_data=_case_sample(df, mask, ["recovery", "ind_dft", "ind_CO", "balance"]),
                 stats={"records": int(count), "affected_accounts": n_accts, "total_accounts": t, "account_rate": round(r, 4)},
             ))
 
@@ -687,6 +714,7 @@ def _run_lgd_checks(df: pd.DataFrame, checks_cfg: dict, variables_cfg: dict[str,
                 question=f"Interest rate has {count:,} records with extreme values (>50% or <0). Check data quality." + _acct_info(df, extreme)[0],
                 check_id="LG9", variable="interest_rate",
                 examples=_examples(df, extreme, variable="interest_rate"),
+                case_data=_case_sample(df, extreme, ["interest_rate", "balance"]),
                 stats={"count": int(count), **_acct_info(df, extreme)[1]},
             ))
 
@@ -720,6 +748,7 @@ def _run_lgd_checks(df: pd.DataFrame, checks_cfg: dict, variables_cfg: dict[str,
                 ),
                 check_id="NB2", variable="next_dft_bal",
                 examples=_examples(df, neg, variable="next_dft_bal"),
+                case_data=_case_sample(df, neg, ["next_dft_bal", "balance", "ind_dft"]),
                 stats={"negative_count": neg_count, **_acct_info(df, neg)[1]},
             ))
 
@@ -742,6 +771,7 @@ def _run_lgd_checks(df: pd.DataFrame, checks_cfg: dict, variables_cfg: dict[str,
                     + _acct_info(valid, rel_diff > 0.1)[0]
                     ),
                     check_id="NB3", variable="next_dft_bal",
+                    case_data=_case_sample(df, df.index.isin(valid.index[rel_diff > 0.1]), ["next_dft_bal", "balance", "new_to_dft", "ind_dft"]),
                     stats={"large_diff_count": large_diff, "rate": round(rate, 4),
                            "median_rel_diff": round(float(rel_diff.median()), 4), **_acct_info(valid, rel_diff > 0.1)[1]},
                 ))
@@ -759,28 +789,28 @@ def _run_lgd_checks(df: pd.DataFrame, checks_cfg: dict, variables_cfg: dict[str,
                     f"Check if this is data error or legitimate (e.g., fully recovered before default flag)."
                 ),
                 check_id="NB4", variable="next_dft_bal",
+                case_data=_case_sample(df, zero_dft, ["next_dft_bal", "balance", "ind_dft"]),
                 stats={"zero_count": zero_count, **_acct_info(df, zero_dft)[1]},
             ))
 
-    # MD1: mths_to_dft missing for defaulted accounts
-    if _col(df, "mths_to_dft") and _col(df, "ind_dft"):
-        dft_mask = df["ind_dft"] == 1
-        total_dft = int(dft_mask.sum())
-        if total_dft > 0:
-            missing = int(df.loc[dft_mask, "mths_to_dft"].isna().sum())
+    # MD1: mths_to_dft missing for records before new_to_dft event
+    if _col(df, "mths_to_dft") and _col(df, "new_to_dft") and _col(df, "acct_id"):
+        ntd_accts = df.loc[df["new_to_dft"] == 1, "acct_id"].unique()
+        if len(ntd_accts) > 0:
+            pre_dft = df[df["acct_id"].isin(ntd_accts)]
+            missing = int(pre_dft["mths_to_dft"].isna().sum())
+            total = len(pre_dft)
             if missing > 0:
-                rate = missing / total_dft
+                rate = missing / total
                 findings.append(Finding(
                     product=product, parameter="PD", impact="Low",
                     question=(
-                        f"mths_to_dft is missing for {missing:,} defaulted records ({rate:.1%}). "
-                        f"This variable is needed for PD term structure estimation. "
-                        f"Missing values reduce the usable default sample."
-                    + _acct_info(df, df["ind_dft"].eq(1) & df["mths_to_dft"].isna())[0]
+                        f"Among accounts that eventually default (new_to_dft=1), "
+                        f"{missing:,} of {total:,} records ({rate:.1%}) have missing mths_to_dft. "
+                        f"This affects PD term structure estimation."
                     ),
                     check_id="MD1", variable="mths_to_dft",
-                    stats={"missing_count": missing, "total_defaults": total_dft, "rate": round(rate, 4),
-                           **_acct_info(df, df["ind_dft"].eq(1) & df["mths_to_dft"].isna())[1]},
+                    stats={"missing_count": missing, "total_records": total, "missing_rate": round(rate, 4)},
                 ))
 
     # MD2: mths_to_dft negative
@@ -797,6 +827,7 @@ def _run_lgd_checks(df: pd.DataFrame, checks_cfg: dict, variables_cfg: dict[str,
                 ),
                 check_id="MD2", variable="mths_to_dft",
                 examples=_examples(df, neg, variable="mths_to_dft"),
+                case_data=_case_sample(df, neg, ["mths_to_dft", "ind_dft", "new_to_dft", "mob"]),
                 stats={"negative_count": neg_count, **_acct_info(df, neg)[1]},
             ))
 
@@ -816,27 +847,6 @@ def _run_lgd_checks(df: pd.DataFrame, checks_cfg: dict, variables_cfg: dict[str,
                     for k, r in trend.iterrows()
                 }},
             ))
-
-    # MD4: mths_to_dft vs mob consistency
-    if _col(df, "mths_to_dft") and _col(df, "mob") and _col(df, "new_to_dft"):
-        ntd = df[(df["new_to_dft"] == 1) & df["mths_to_dft"].notna() & df["mob"].notna()]
-        if len(ntd) > 0:
-            diff = (ntd["mths_to_dft"] - ntd["mob"]).abs()
-            large = int((diff > 2).sum())
-            if large > 0:
-                rate = large / len(ntd)
-                findings.append(Finding(
-                    product=product, parameter="PD", impact="Low",
-                    question=(
-                        f"{large:,} new-to-default records ({rate:.1%}) have |mths_to_dft - mob| > 2. "
-                        f"At the point of first default, mths_to_dft should approximate mob. "
-                        f"Large gaps suggest different reference dates in derivation."
-                    + _acct_info(ntd, diff > 2)[0]
-                    ),
-                    check_id="MD4", variable="mths_to_dft",
-                    stats={"inconsistent_count": large, "rate": round(rate, 4),
-                           **_acct_info(ntd, diff > 2)[1]},
-                ))
 
     return findings
 
@@ -895,11 +905,13 @@ def _run_dt_opened(df: pd.DataFrame, checks_cfg: dict, product: str) -> list[Fin
                 stats={"missing_rate": round(rate, 4)},
             ))
 
-    # DO2: dt_opened > obs_month
+    # DO2: dt_opened month > obs_month (compare at month level)
     if _col(df, "dt_opened") and _col(df, "obs_month"):
         both_valid = df["dt_opened"].notna() & df["obs_month"].notna()
         if both_valid.any() and pd.api.types.is_datetime64_any_dtype(df["obs_month"]) and pd.api.types.is_datetime64_any_dtype(df["dt_opened"]):
-            mask = (df["dt_opened"] > df["obs_month"]) & both_valid
+            dt_month = df["dt_opened"].dt.to_period("M")
+            obs_month_p = df["obs_month"].dt.to_period("M")
+            mask = (dt_month > obs_month_p) & both_valid
             count = int(mask.sum())
             if count > 0:
                 findings.append(Finding(
@@ -907,6 +919,7 @@ def _run_dt_opened(df: pd.DataFrame, checks_cfg: dict, product: str) -> list[Fin
                     question=f"{count:,} records have dt_opened later than obs_month. This results in negative mob and indicates data or imputation error." + _acct_info(df, mask)[0],
                     check_id="DO2", variable="dt_opened",
                     examples=_examples(df, mask, variable="dt_opened"),
+                    case_data=_case_sample(df, mask, ["dt_opened", "mob"]),
                     stats={"count": count, **_acct_info(df, mask)[1]},
                 ))
 
@@ -949,13 +962,16 @@ def _run_origination_checks(df: pd.DataFrame, checks_cfg: dict, product: str) ->
                         + _acct_info(valid, over)[0]
                     ),
                     check_id="LV1", variable="ln_value",
+                    case_data=_case_sample(df, over.reindex(df.index, fill_value=False), ["ln_value", "balance"]),
                     stats={"count": over_count, "rate": round(rate, 4), **_acct_info(valid, over)[1]},
                 ))
 
-    # LV2: ln_value should be constant per account
+    # LV2: ln_value should be constant per account (tolerance 0.1%)
     if _col(df, "ln_value") and _col(df, "acct_id"):
-        per_acct = df[df["ln_value"].notna()].groupby("acct_id", observed=True)["ln_value"].nunique()
-        changing = per_acct[per_acct > 1]
+        valid = df[df["ln_value"].notna()]
+        agg = valid.groupby("acct_id", observed=True)["ln_value"].agg(["min", "max"])
+        agg["range_pct"] = (agg["max"] - agg["min"]) / agg["max"].replace(0, np.nan)
+        changing = agg[agg["range_pct"] > 0.001]
         if len(changing) > 0:
             findings.append(Finding(
                 product=product, parameter="EAD", impact="Low",
@@ -966,6 +982,7 @@ def _run_origination_checks(df: pd.DataFrame, checks_cfg: dict, product: str) ->
                     f" Affected accounts: {len(changing):,} / {int(_total_accounts(df)):,} ({len(changing)/_total_accounts(df):.1%})."
                 ),
                 check_id="LV2", variable="ln_value",
+                case_data=_case_sample(df, df["acct_id"].isin(changing.index), ["ln_value", "balance"]),
                 stats={"accounts_with_changes": len(changing), "total_accounts": _total_accounts(df),
                        "account_rate": round(len(changing) / df["acct_id"].nunique(), 4)},
             ))
@@ -987,10 +1004,12 @@ def _run_origination_checks(df: pd.DataFrame, checks_cfg: dict, product: str) ->
                 }},
             ))
 
-    # BA1: booked_amt should be constant per account
+    # BA1: booked_amt should be constant per account (tolerance 0.1%)
     if _col(df, "booked_amt") and _col(df, "acct_id"):
-        per_acct = df[df["booked_amt"].notna()].groupby("acct_id", observed=True)["booked_amt"].nunique()
-        changing = per_acct[per_acct > 1]
+        valid = df[df["booked_amt"].notna()]
+        agg = valid.groupby("acct_id", observed=True)["booked_amt"].agg(["min", "max"])
+        agg["range_pct"] = (agg["max"] - agg["min"]) / agg["max"].replace(0, np.nan)
+        changing = agg[agg["range_pct"] > 0.001]
         if len(changing) > 0:
             findings.append(Finding(
                 product=product, parameter="Data", impact="Low",
@@ -1001,6 +1020,7 @@ def _run_origination_checks(df: pd.DataFrame, checks_cfg: dict, product: str) ->
                     f" Affected accounts: {len(changing):,} / {int(_total_accounts(df)):,} ({len(changing)/_total_accounts(df):.1%})."
                 ),
                 check_id="BA1", variable="booked_amt",
+                case_data=_case_sample(df, df["acct_id"].isin(changing.index), ["booked_amt", "ln_value"]),
                 stats={"accounts_with_changes": len(changing), "total_accounts": _total_accounts(df),
                        "account_rate": round(len(changing) / df["acct_id"].nunique(), 4)},
             ))
@@ -1029,6 +1049,7 @@ def _run_origination_checks(df: pd.DataFrame, checks_cfg: dict, product: str) ->
                         + acct_info
                     ),
                     check_id="BA2", variable="booked_amt",
+                    case_data=_case_sample(df, (rel_diff > 0.01).reindex(df.index, fill_value=False), ["booked_amt", "ln_value"]),
                     stats={"count": large, "rate": round(rate, 4), **acct_stats},
                 ))
 
@@ -1065,6 +1086,7 @@ def _run_origination_checks(df: pd.DataFrame, checks_cfg: dict, product: str) ->
                         f" Affected accounts: {unexplained:,} / {int(_total_accounts(df)):,} ({unexplained/_total_accounts(df):.1%})."
                     ),
                     check_id="RS2", variable="ind_restructure",
+                    case_data=_case_sample(df, df["acct_id"].isin(no_restructure[no_restructure].index), ["ind_restructure", "ln_term", "maturity_dt"]),
                     stats={"unexplained_term_changes": unexplained,
                            "total_term_changed_accounts": len(changed_accts),
                            "affected_accounts": unexplained, "total_accounts": _total_accounts(df),
@@ -1112,6 +1134,7 @@ def _run_term(df: pd.DataFrame, tc: dict, product: str) -> list[Finding]:
                 question=f"{count:,} records have maturity_dt before dt_opened. This is a data error that invalidates Loan Term and remaining_term." + _acct_info(df, mask)[0],
                 check_id="TM2", variable="maturity_dt",
                 examples=_examples(df, mask, variable="maturity_dt"),
+                case_data=_case_sample(df, mask, ["maturity_dt", "dt_opened", "ln_term"]),
                 stats={"count": int(count), **_acct_info(df, mask)[1]},
             ))
 
@@ -1131,6 +1154,7 @@ def _run_term(df: pd.DataFrame, tc: dict, product: str) -> list[Finding]:
                 question=f"{count:,} functional, open accounts have maturity_dt earlier than obs_month. These accounts have passed maturity but are not closed, affecting ERL terminal event." + _acct_info(df, mask)[0],
                 check_id="TM3", variable="maturity_dt",
                 examples=_examples(df, mask, variable="maturity_dt"),
+                case_data=_case_sample(df, mask, ["maturity_dt", "ind_closed", "balance", "remaining_term"]),
                 stats={"count": int(count), **_acct_info(df, mask)[1]},
             ))
 
@@ -1148,6 +1172,7 @@ def _run_term(df: pd.DataFrame, tc: dict, product: str) -> list[Finding]:
                 impact="Medium",
                 question=f"{count:,} non-restructured accounts have different maturity_dt values across obs_months. Maturity should be stable for term products. Affected accounts: {count:,} / {int(_total_accounts(df)):,} ({count/_total_accounts(df):.1%}).",
                 check_id="TM4", variable="maturity_dt",
+                case_data=_case_sample(df, df["acct_id"].isin(inconsistent.index), ["maturity_dt", "ln_term", "ind_restructure"]),
                 stats={"inconsistent_accounts": int(count), "affected_accounts": int(count),
                        "total_accounts": _total_accounts(df),
                        "account_rate": round(count / df["acct_id"].nunique(), 4)},
@@ -1218,6 +1243,7 @@ def _run_term(df: pd.DataFrame, tc: dict, product: str) -> list[Finding]:
                 impact="Low",
                 question=f"{count:,} records have negative remaining_term." + _acct_info(df, mask)[0],
                 check_id="TM7", variable="remaining_term",
+                case_data=_case_sample(df, mask, ["remaining_term", "ln_term", "mob", "maturity_dt"]),
                 stats={"count": int(count), **_acct_info(df, mask)[1]},
             ))
 
@@ -1240,6 +1266,7 @@ def _run_term(df: pd.DataFrame, tc: dict, product: str) -> list[Finding]:
                 impact="Low",
                 question=f"{inconsistent:,} records ({rate:.1%}) have mob + remaining_term ≠ ln_term. Term variables must be exactly consistent." + acct_info,
                 check_id="TM8", variable="remaining_term",
+                case_data=_case_sample(df, (diff > 0).reindex(df.index, fill_value=False), ["remaining_term", "ln_term", "mob"]),
                 stats={"inconsistent_count": inconsistent, "rate": round(rate, 4), **acct_stats},
             ))
 
@@ -1257,6 +1284,7 @@ def _run_term(df: pd.DataFrame, tc: dict, product: str) -> list[Finding]:
                         impact="Low",
                         question=f"{inconsistent:,} records have remaining_term inconsistent with (maturity_dt - obs_month) by more than 2 months." + _acct_info(valid, diff > 2)[0],
                         check_id="TM9", variable="remaining_term",
+                        case_data=_case_sample(df, (diff > 2).reindex(df.index, fill_value=False), ["remaining_term", "maturity_dt", "mob"]),
                         stats={"inconsistent_count": int(inconsistent), **_acct_info(valid, diff > 2)[1]},
                     ))
 
@@ -1302,6 +1330,7 @@ def _run_revolving(df: pd.DataFrame, rc: dict, product: str) -> list[Finding]:
                 question=f"{count:,} records have credit_limit <= 0. This causes division-by-zero in utilization calculation." + _acct_info(df, mask)[0],
                 check_id="RV2", variable="credit_limit",
                 examples=_examples(df, mask, variable="credit_limit"),
+                case_data=_case_sample(df, mask, ["credit_limit", "balance"]),
                 stats={"count": int(count), **_acct_info(df, mask)[1]},
             ))
 
@@ -1369,6 +1398,7 @@ def _run_revolving(df: pd.DataFrame, rc: dict, product: str) -> list[Finding]:
                 impact=rc["limit_temporal"].get("impact", "Low"),
                 question=f"{count:,} records have credit_limit changing by >50% month-over-month (excluding restructured accounts).",
                 check_id="RV5", variable="credit_limit",
+                case_data=_case_sample(df, big_change.reindex(df.index, fill_value=False), ["credit_limit", "balance", "ind_restructure"]),
                 stats={"count": int(count), "limit_trend": limit_trend_stats},
             ))
 

@@ -59,6 +59,7 @@ class Finding:
     examples: pd.DataFrame | None = None
     stats: dict[str, Any] | None = None
     reference_only: bool = False
+    case_data: pd.DataFrame | None = None
 
     @property
     def parameter_str(self) -> str:

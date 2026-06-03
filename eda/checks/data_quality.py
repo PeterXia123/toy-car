@@ -6,6 +6,20 @@ import pandas as pd
 from eda.models import Finding, VariableInfo
 
 
+def _case_sample(df: pd.DataFrame, mask, cols: list[str]) -> pd.DataFrame | None:
+    if "acct_id" not in df.columns:
+        return None
+    affected = df.loc[mask, "acct_id"]
+    if len(affected) == 0:
+        return None
+    sample_id = affected.iloc[0]
+    base = ["acct_id", "obs_month"]
+    keep = [c for c in base if c in df.columns]
+    keep += [c for c in cols if c in df.columns and c not in keep]
+    result = df.loc[df["acct_id"] == sample_id, keep]
+    return result.sort_values("obs_month") if "obs_month" in df.columns else result
+
+
 _REQUIRED_COLUMNS = {
     "obs_month": (["Data"], "Observation month is required for all time-series checks."),
     "acct_id": (["Data"], "Account ID is required for account-level tracking and proportion calculation."),
@@ -86,6 +100,9 @@ def check_missing_values(
     parameter = cfg.get("parameter", "Data")
     findings: list[Finding] = []
 
+    # Variables that are naturally NaN for non-event accounts
+    skip_missing = {"next_dft_bal", "mths_to_dft"}
+
     missing_matrix = {}
     has_month = "obs_month" in df.columns
 
@@ -94,6 +111,8 @@ def check_missing_values(
 
     for var_name, var_info in variables_cfg.items():
         if var_name not in df.columns:
+            continue
+        if var_name in skip_missing:
             continue
 
         overall_rate = float(df[var_name].isna().mean())
@@ -183,6 +202,7 @@ def check_negative_values(
             check_id="DQ2",
             variable=var_name,
             examples=examples,
+            case_data=_case_sample(df, neg_mask, [var_name]),
             stats={"negative_count": int(neg_count), "negative_rate": round(neg_rate, 4)},
         ))
 

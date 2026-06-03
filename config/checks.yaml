@@ -61,7 +61,7 @@ consistency:
     parameter: [LGD]
 
   closed_vs_chargeoff:
-    enabled: true
+    enabled: false
     impact: Low
     parameter: [LGD, ERL]
 
@@ -157,7 +157,7 @@ account_tracking:
     parameter: PD
 
   left_censoring:
-    enabled: true
+    enabled: false
     impact: Medium
     parameter: Data
 

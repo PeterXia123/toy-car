@@ -12,7 +12,7 @@ from eda.loader import (
 )
 from eda.models import Finding, finding_sort_key
 from eda.checks import data_quality, consistency, trends
-from eda.reporting import charts, issue_log, html_report
+from eda.reporting import charts, issue_log, html_report, case_sheets
 
 
 def run_validation(
@@ -20,6 +20,7 @@ def run_validation(
     checks_config_path: str | None = None,
     variables_config_path: str | None = None,
     only: list[str] | None = None,
+    extra_findings: list[Finding] | None = None,
 ) -> list[Finding]:
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -106,9 +107,23 @@ def run_validation(
         findings += consistency.run_revolving_checks(df, checks_cfg, project_cfg.product)
         categories_run.append("revolving_checks")
 
+    if extra_findings:
+        for ef in extra_findings:
+            ef.product = project_cfg.product
+        findings = extra_findings + findings
+
     _enrich_downstream(findings, variables_cfg)
 
-    # Release data to free memory before report generation
+    # Write case sheets before releasing data
+    case_path = os.path.join(project_cfg.output_directory, "Case_Sheets.xlsx")
+    n_cases = case_sheets.generate(findings, case_path)
+    if n_cases:
+        print(f"  {n_cases} case sheets saved to {case_path}")
+
+    # Clear case_data from findings to free memory, then release data
+    for f in findings:
+        f.case_data = None
+
     del df
     import gc; gc.collect()
 

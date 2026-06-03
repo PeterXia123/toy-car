@@ -6,6 +6,20 @@ import pandas as pd
 from eda.models import Finding, VariableInfo
 
 
+def _case_sample(df: pd.DataFrame, mask, cols: list[str]) -> pd.DataFrame | None:
+    if "acct_id" not in df.columns:
+        return None
+    affected = df.loc[mask, "acct_id"]
+    if len(affected) == 0:
+        return None
+    sample_id = affected.iloc[0]
+    base = ["acct_id", "obs_month"]
+    keep = [c for c in base if c in df.columns]
+    keep += [c for c in cols if c in df.columns and c not in keep]
+    result = df.loc[df["acct_id"] == sample_id, keep]
+    return result.sort_values("obs_month") if "obs_month" in df.columns else result
+
+
 def run(
     df: pd.DataFrame,
     checks_cfg: dict,
@@ -124,7 +138,10 @@ def _run_time_series(df: pd.DataFrame, cfg: dict, product: str) -> list[Finding]
 # ================================================================
 
 def _build_censored_mask(last_records: pd.DataFrame, global_max) -> pd.Series:
-    mask = last_records["obs_month"] < global_max
+    # Exclude accounts still present in the last month — only flag those
+    # that disappeared before the last observation month without reason
+    cutoff = global_max - pd.DateOffset(months=1)
+    mask = last_records["obs_month"] < cutoff
     for col in ["ind_closed", "ind_CO", "ind_dft"]:
         if col in last_records.columns:
             mask = mask & (last_records[col] != 1)
@@ -152,7 +169,7 @@ def _check_right_censoring(
         impact=impact,
         question=(
             f"{censored_count:,} accounts ({censored_rate:.1%}) are right-censored — "
-            f"they disappear before {global_max} without closure, chargeoff, or default. "
+            f"they disappear before the second-to-last observation month without closure, chargeoff, or default. "
             f"These accounts cannot contribute complete event histories for ERL or DF estimation."
         ),
         check_id="AT1",
@@ -280,6 +297,7 @@ def _check_record_gaps(df: pd.DataFrame, cfg: dict, product: str) -> list[Findin
         ),
         check_id="AT4",
         variable="acct_id",
+        case_data=_case_sample(df, gap_mask.reindex(df.index, fill_value=False), ["ind_closed", "ind_CO", "ind_dft", "dpd"]),
         stats={"gap_accounts": gap_accounts, "total_gaps": gap_count,
                "affected_accounts": gap_accounts, "total_accounts": total_accounts,
                "account_rate": round(gap_accounts / total_accounts, 4) if total_accounts > 0 else 0},

@@ -45,12 +45,15 @@ def main():
     if args.only:
         only = [c.strip() for c in args.only.split(",")]
 
+    pre_findings = _pre_run_questions()
+
     try:
         findings = run_validation(
             project_config_path=args.project,
             checks_config_path=args.checks,
             variables_config_path=args.variables,
             only=only,
+            extra_findings=pre_findings,
         )
     except FileNotFoundError as e:
         print(f"Error: {e}", file=sys.stderr)
@@ -58,6 +61,46 @@ def main():
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         raise
+
+
+def _pre_run_questions() -> list:
+    from eda.models import Finding
+
+    questions = [
+        (
+            "Can you confirm that the default definition used in the upstream "
+            "scorecard models aligns with the IFRS 9 default definition? (Yes/No): ",
+            "The default definition used in the upstream scorecard models has NOT been "
+            "confirmed to align with the IFRS 9 default definition. Misalignment may "
+            "invalidate PD calibration and score-default alignment checks.",
+            "SA0",
+            "score_orig",
+            ["Score_Alignment", "PD"],
+        ),
+        (
+            "Have we received the data attestation from the local provision team "
+            "for this portfolio? (Yes/No): ",
+            "Data attestation has NOT been received from the local provision team. "
+            "Without attestation, data completeness and accuracy cannot be verified.",
+            "DQ_ATT",
+            "ALL",
+            "Data",
+        ),
+    ]
+
+    findings = []
+    for prompt, message, check_id, variable, parameter in questions:
+        answer = input(prompt).strip().lower()
+        if answer != "yes":
+            findings.append(Finding(
+                product="",
+                parameter=parameter,
+                impact="High",
+                question=message,
+                check_id=check_id,
+                variable=variable,
+            ))
+    return findings
 
 
 def _list_checks(checks_path: str | None = None):
