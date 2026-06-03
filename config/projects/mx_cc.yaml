@@ -11,35 +11,35 @@ data:
   format: parquet
 
 column_mapping:
-  obs_month: obs_month
-  acct_id: acct_id
-  dpd: dpd
-  cpd: cyc_pst_due
-  balance: balance
-  ind_closed: ind_closed
-  ind_CO: ind_CO
-  ind_dft: ind_dft
-  lag_ind_dft: lag_ind_dft
-  new_to_dft: new_to_dft
-  score_orig: score_orig
-  score_bhv: score_bhv
-  perf_lvl1: perf_lvl1
-  perf_lvl2: perf_lvl2
-  dt_opened: dt_opened
-  maturity_dt: maturity_dt
-  ln_term: ln_term
-  remaining_term: remaining_term
-  mob: mob
-  recovery: recovery
-  interest_rate: interest_rate
-  ln_value: ln_value
-  booked_amt: booked_amt
-  ind_restructure: ind_restructure
-  credit_limit: current_limit
+  rpt_mth: obs_month
+  eid: acct_id
+  past_d: dpd
+  past_c: cyc_pst_due
+  cur_amt: balance
+  fl_close: ind_closed
+  fl_wo: ind_CO
+  fl_evt: ind_dft
+  lag_fl_evt: lag_ind_dft
+  new_evt: new_to_dft
+  sc_orig: score_orig
+  sc_curr: score_bhv
+  grp1: perf_lvl1
+  grp2: perf_lvl2
+  dt_start: dt_opened
+  dt_end: maturity_dt
+  tot_term: ln_term
+  rem_term: remaining_term
+  mos_bk: mob
+  rcv_amt: recovery
+  ann_rate: interest_rate
+  face_val: ln_value
+  init_amt: booked_amt
+  fl_restr: ind_restructure
+  max_lim: current_limit
 
 filters:
   exclude_months: []
-  perf_lvl1_filter: null
+  grp1_filter: null
 
 output:
   directory: "output/MX_CC/"
