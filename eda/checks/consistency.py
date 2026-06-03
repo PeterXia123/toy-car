@@ -1524,3 +1524,52 @@ def _lgd_workout_checks(df: pd.DataFrame, findings: list, product: str) -> None:
                 question=question, check_id="LG13", variable="rcv_amt",
                 reference_only=True, stats=stats,
             ))
+
+    # LG14: recovery pattern distribution over 36-month window
+    if has_recovery:
+        rcv = merged["rcv_amt"]
+        merged["_rcv_pos"] = (rcv > 0).astype(int)
+        merged["_rcv_zero"] = (rcv.isna() | (rcv == 0)).astype(int)
+        merged["_rcv_neg"] = (rcv < 0).astype(int)
+
+        acct_pat = merged.groupby("eid", observed=True).agg(
+            n_months=("months_since", "count"),
+            n_pos=("_rcv_pos", "sum"),
+            n_zero=("_rcv_zero", "sum"),
+            n_neg=("_rcv_neg", "sum"),
+            dft_month=("dft_month", "first"),
+        )
+        acct_pat["pct_pos"] = acct_pat["n_pos"] / acct_pat["n_months"]
+        acct_pat["pct_zero"] = acct_pat["n_zero"] / acct_pat["n_months"]
+        acct_pat["pct_neg"] = acct_pat["n_neg"] / acct_pat["n_months"]
+
+        cohort_pat = acct_pat.groupby("dft_month").agg(
+            pct_pos=("pct_pos", "mean"),
+            pct_zero=("pct_zero", "mean"),
+            pct_neg=("pct_neg", "mean"),
+            count=("n_months", "count"),
+        )
+
+        lg14_stats: dict = {"cohort": {}}
+        for month, row in cohort_pat.iterrows():
+            m = str(month)[:7]
+            lg14_stats["cohort"][m] = {
+                "pct_pos": round(float(row["pct_pos"]), 4),
+                "pct_zero": round(float(row["pct_zero"]), 4),
+                "pct_neg": round(float(row["pct_neg"]), 4),
+                "count": int(row["count"]),
+            }
+
+        findings.append(Finding(
+            product=product, parameter="LGD", impact="Low",
+            question=(
+                f"Recovery pattern distribution for {len(acct_pat)} defaulted accounts "
+                f"over {WINDOW}-month window. Average proportion of months with "
+                f"positive recovery: {acct_pat['pct_pos'].mean():.1%}, "
+                f"zero/NA: {acct_pat['pct_zero'].mean():.1%}, "
+                f"negative: {acct_pat['pct_neg'].mean():.1%}."
+            ),
+            check_id="LG14", variable="rcv_amt",
+            reference_only=True, stats=lg14_stats,
+        ))
+        merged.drop(columns=["_rcv_pos", "_rcv_zero", "_rcv_neg"], inplace=True)

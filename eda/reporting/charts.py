@@ -90,6 +90,8 @@ def generate_all_charts(findings: list[Finding], charts_dir: str) -> None:
                 path = _plot_credit_limit_trend(f, charts_dir)
             elif f.check_id in ("LG12", "LG13"):
                 path = _plot_lgd_workout(f, charts_dir)
+            elif f.check_id == "LG14":
+                path = _plot_recovery_pattern(f, charts_dir)
         except Exception:
             pass
 
@@ -890,6 +892,52 @@ def _plot_lgd_workout(f: Finding, charts_dir: str) -> str | None:
     ax1.grid(axis="y", alpha=0.2)
     plt.tight_layout()
     path = os.path.join(charts_dir, f"{f.check_id}_lgd_workout.png")
+    fig.savefig(path, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
+def _plot_recovery_pattern(f: Finding, charts_dir: str) -> str | None:
+    cohort = f.stats.get("cohort", {})
+    if not cohort:
+        return None
+
+    months = sorted(cohort.keys())
+    x = np.arange(len(months))
+    pct_pos = [cohort[m]["pct_pos"] for m in months]
+    pct_zero = [cohort[m]["pct_zero"] for m in months]
+    pct_neg = [cohort[m]["pct_neg"] for m in months]
+    counts = [cohort[m]["count"] for m in months]
+
+    fig, ax = plt.subplots(figsize=(20, 6))
+
+    ax.bar(x, pct_neg, 0.7, label="Negative (< 0)", color=_COLORS["red"], alpha=0.85)
+    bottom_zero = pct_neg
+    ax.bar(x, pct_zero, 0.7, bottom=bottom_zero, label="Zero / NA", color=_COLORS["grey"], alpha=0.85)
+    bottom_pos = [n + z for n, z in zip(pct_neg, pct_zero)]
+    ax.bar(x, pct_pos, 0.7, bottom=bottom_pos, label="Positive (> 0)", color=_COLORS["green"], alpha=0.85)
+
+    for i, c in enumerate(counts):
+        ax.text(i, 1.02, f"n={c}", ha="center", va="bottom", fontsize=7, color="#333")
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([str(m)[:7] for m in months], rotation=45, ha="right")
+    ax.yaxis.set_major_formatter(mticker.PercentFormatter(1.0))
+    ax.set_ylabel("Proportion of 36-Month Window")
+    ax.set_xlabel("Default Cohort Month")
+    n_total = sum(counts)
+    ax.set_title(
+        f"Recovery Pattern Distribution by Default Cohort\n"
+        f"(n={n_total} accounts, avg proportion of months with positive / zero / negative recovery)",
+        fontsize=11, fontweight="bold", pad=12,
+    )
+    ax.legend(fontsize=9, loc="upper right")
+    ax.set_ylim(0, 1.12)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.grid(axis="y", alpha=0.2)
+    plt.tight_layout()
+    path = os.path.join(charts_dir, f"{f.check_id}_recovery_pattern.png")
     fig.savefig(path, bbox_inches="tight")
     plt.close(fig)
     return path
