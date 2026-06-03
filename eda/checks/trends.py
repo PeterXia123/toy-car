@@ -239,7 +239,7 @@ def _check_attrition_spikes(
     return [Finding(
         product=product,
         parameter=parameter,
-        impact="High",
+        impact="Low",
         question=(
             f"{len(spikes)} month(s) have unexplained attrition rate >= {spike_threshold:.0%}: "
             f"{spike_months}. "
