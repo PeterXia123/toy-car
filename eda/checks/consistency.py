@@ -441,6 +441,8 @@ def _run_score_alignment_checks(df: pd.DataFrame, sa_cfg: dict, product: str) ->
     impact = sa_cfg.get("impact", "High")
     parameter = sa_cfg.get("parameter", ["Score_Alignment", "PD", "SICR"])
 
+    mob_filter = sa_cfg.get("mob_filter", {})
+
     if not _col(df, default_col):
         return findings
 
@@ -454,7 +456,15 @@ def _run_score_alignment_checks(df: pd.DataFrame, sa_cfg: dict, product: str) ->
         if not _col(sa_df, score_col):
             continue
 
-        valid = sa_df[[score_col, default_col]].dropna()
+        score_df = sa_df
+        if score_col in mob_filter and _col(sa_df, "mos_bk"):
+            cutoff = mob_filter[score_col]
+            if score_col == "sc_orig":
+                score_df = sa_df[sa_df["mos_bk"] < cutoff]
+            else:
+                score_df = sa_df[sa_df["mos_bk"] >= cutoff]
+
+        valid = score_df[[score_col, default_col]].dropna()
         if len(valid) < 100:
             continue
 
@@ -487,8 +497,8 @@ def _run_score_alignment_checks(df: pd.DataFrame, sa_cfg: dict, product: str) ->
             ))
 
         # SA3: Score segment × rpt_mth default rate (for heatmap)
-        if _col(sa_df, "rpt_mth"):
-            valid_with_month = sa_df[[score_col, default_col, "rpt_mth"]].dropna()
+        if _col(score_df, "rpt_mth"):
+            valid_with_month = score_df[[score_col, default_col, "rpt_mth"]].dropna()
             if len(valid_with_month) > 100:
                 sa3_segs = min(effective_segments, 5)
                 valid_with_month["segment"] = pd.qcut(valid_with_month[score_col], sa3_segs, labels=False, duplicates="drop")
@@ -521,11 +531,10 @@ def _run_score_alignment_checks(df: pd.DataFrame, sa_cfg: dict, product: str) ->
                        "over_1000": over_1000, "over_1000_rate": round(over_pct, 4)},
             ))
 
-        # SA5/SA6: Missing rate trend on functional accounts (grp1=0)
-        if _col(df, "rpt_mth"):
-            func_df = df[df["grp1"] == 0] if _col(df, "grp1") else df
-            monthly_miss = func_df[score_col].isna().groupby(func_df["rpt_mth"]).mean()
-            overall_miss = func_df[score_col].isna().mean()
+        # SA5/SA6: Missing rate trend on functional accounts
+        if _col(score_df, "rpt_mth"):
+            monthly_miss = score_df[score_col].isna().groupby(score_df["rpt_mth"]).mean()
+            overall_miss = score_df[score_col].isna().mean()
             is_issue = overall_miss > 0.05
             findings.append(Finding(
                 product=product, parameter=parameter, impact="Low",
@@ -541,8 +550,8 @@ def _run_score_alignment_checks(df: pd.DataFrame, sa_cfg: dict, product: str) ->
             ))
 
         # SA7: Distribution drift
-        if _col(df, "rpt_mth"):
-            monthly_mean = df.groupby("rpt_mth")[score_col].mean()
+        if _col(score_df, "rpt_mth"):
+            monthly_mean = score_df.groupby("rpt_mth")[score_col].mean()
             if len(monthly_mean) > 3:
                 z = (monthly_mean - monthly_mean.mean()) / monthly_mean.std()
                 jumps = z.abs() > 2.5
@@ -561,8 +570,8 @@ def _run_score_alignment_checks(df: pd.DataFrame, sa_cfg: dict, product: str) ->
                     ))
 
         # SA8: Segment default rate trend — visual check for definition alignment
-        if _col(sa_df, "rpt_mth"):
-            ts_valid = sa_df[[score_col, default_col, "rpt_mth"]].dropna()
+        if _col(score_df, "rpt_mth"):
+            ts_valid = score_df[[score_col, default_col, "rpt_mth"]].dropna()
             if len(ts_valid) > 200:
                 n_seg = min(effective_segments, 5)
                 ts_valid["segment"] = pd.qcut(

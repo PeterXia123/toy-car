@@ -99,6 +99,9 @@ score_alignment:
   max_high_score_default_rate: 0.02
   impact: Medium
   parameter: [Score_Alignment, PD, SICR]
+  mob_filter:
+    sc_orig: 6      # mob < 6 (early life)
+    sc_curr: 6      # mob >= 6 (seasoned)
 
 trends:
   time_series:
