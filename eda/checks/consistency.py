@@ -595,6 +595,40 @@ def _run_score_alignment_checks(df: pd.DataFrame, sa_cfg: dict, product: str) ->
                         },
                     ))
 
+                    # SA9: Detect segment crossing — rank order instability
+                    segs = sorted(pivot.columns)
+                    crossing_pairs = []
+                    for si in range(len(segs)):
+                        for sj in range(si + 1, len(segs)):
+                            diff = pivot[segs[sj]] - pivot[segs[si]]
+                            signs = np.sign(diff.dropna().values)
+                            n_cross = int((np.diff(signs) != 0).sum())
+                            if n_cross > 0:
+                                crossing_pairs.append({
+                                    "seg_low": seg_labels.get(int(segs[si]), str(segs[si])),
+                                    "seg_high": seg_labels.get(int(segs[sj]), str(segs[sj])),
+                                    "crossings": n_cross,
+                                })
+                    if crossing_pairs:
+                        total_cross = sum(p["crossings"] for p in crossing_pairs)
+                        worst = max(crossing_pairs, key=lambda p: p["crossings"])
+                        findings.append(Finding(
+                            product=product, parameter=parameter, impact="Medium",
+                            question=(
+                                f"Score `{score_col}` segments cross {total_cross} times across "
+                                f"{len(crossing_pairs)} segment pairs. "
+                                f"Worst: segments {worst['seg_low']} and {worst['seg_high']} "
+                                f"cross {worst['crossings']} times. "
+                                f"This indicates unstable rank ordering — the score's risk "
+                                f"discrimination changes over time."
+                            ),
+                            check_id="SA9", variable=score_col,
+                            stats={
+                                "crossing_pairs": crossing_pairs,
+                                "total_crossings": total_cross,
+                            },
+                        ))
+
     return findings
 
 
