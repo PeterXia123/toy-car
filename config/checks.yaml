@@ -80,20 +80,20 @@ consistency:
     impact: Low
     parameter: [PD, Data]
 
-  next_dft_bal:
+  fwd_amt:
     enabled: true
     impact: Low
     parameter: [LGD, EAD]
 
-  mths_to_dft:
+  mos_to_evt:
     enabled: true
     impact: Low
     parameter: [PD, DF]
 
 score_alignment:
   enabled: true
-  score_columns: [score_orig, score_bhv]
-  default_column: ind_dft
+  score_columns: [sc_orig, sc_curr]
+  default_column: fl_evt
   n_segments: 10
   monotonicity_tolerance: 1
   max_high_score_default_rate: 0.02
@@ -103,8 +103,8 @@ score_alignment:
 trends:
   time_series:
     enabled: false
-    variables: [ind_closed, ind_CO, recovery, balance, dpd]
-    group_by: obs_month
+    variables: [fl_close, fl_wo, rcv_amt, cur_amt, past_d]
+    group_by: rpt_mth
     detect_anomaly: true
     anomaly_method: zscore
     anomaly_threshold: 2.5
@@ -118,7 +118,7 @@ trends:
 
   score_distribution_drift:
     enabled: true
-    score_columns: [score_orig, score_bhv]
+    score_columns: [sc_orig, sc_curr]
     impact: High
     parameter: Score_Alignment
 

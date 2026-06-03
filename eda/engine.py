@@ -43,24 +43,24 @@ def run_validation(
 
     # Keep only columns used by checks — drop everything else to save memory
     keep_cols = set(variables_cfg.keys()) | {
-        "obs_month", "acct_id", "perf_lvl1", "perf_lvl2",
-        "ind_dft", "ind_closed", "ind_CO", "ind_excl",
-        "new_to_dft", "lag_ind_dft", "lag_ind_CO", "new_to_CO",
-        "ind_restructure", "dpd", "cpd", "balance", "recovery",
-        "next_dft_bal", "mths_to_dft", "dt_opened", "mob",
-        "score_orig", "score_bhv", "interest_rate",
-        "ln_term", "ln_value", "booked_amt", "maturity_dt",
-        "remaining_term", "credit_limit",
+        "rpt_mth", "eid", "grp1", "grp2",
+        "fl_evt", "fl_close", "fl_wo", "fl_excl",
+        "new_evt", "lag_fl_evt", "lag_fl_wo", "new_wo",
+        "fl_restr", "past_d", "past_c", "cur_amt", "rcv_amt",
+        "fwd_amt", "mos_to_evt", "dt_start", "mos_bk",
+        "sc_orig", "sc_curr", "ann_rate",
+        "tot_term", "face_val", "init_amt", "dt_end",
+        "rem_term", "max_lim",
     }
     drop_cols = [c for c in df.columns if c not in keep_cols]
     if drop_cols:
         df = df.drop(columns=drop_cols)
 
-    if "acct_id" in df.columns and "obs_month" in df.columns:
-        df = df.sort_values(["acct_id", "obs_month"])
+    if "eid" in df.columns and "rpt_mth" in df.columns:
+        df = df.sort_values(["eid", "rpt_mth"])
 
     print(f"Data shape: {df.shape[0]:,} rows × {df.shape[1]} columns")
-    print(f"Observation months: {df['obs_month'].nunique() if 'obs_month' in df.columns else 'N/A'}")
+    print(f"Observation months: {df['rpt_mth'].nunique() if 'rpt_mth' in df.columns else 'N/A'}")
 
     mapped = [v for v in variables_cfg if v in df.columns]
     missing = [v for v in variables_cfg if v not in df.columns]

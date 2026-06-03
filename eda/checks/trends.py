@@ -7,17 +7,17 @@ from eda.models import Finding, VariableInfo
 
 
 def _case_sample(df: pd.DataFrame, mask, cols: list[str]) -> pd.DataFrame | None:
-    if "acct_id" not in df.columns:
+    if "eid" not in df.columns:
         return None
-    affected = df.loc[mask, "acct_id"]
+    affected = df.loc[mask, "eid"]
     if len(affected) == 0:
         return None
     sample_id = affected.iloc[0]
-    base = ["acct_id", "obs_month"]
+    base = ["eid", "rpt_mth"]
     keep = [c for c in base if c in df.columns]
     keep += [c for c in cols if c in df.columns and c not in keep]
-    result = df.loc[df["acct_id"] == sample_id, keep]
-    return result.sort_values("obs_month") if "obs_month" in df.columns else result
+    result = df.loc[df["eid"] == sample_id, keep]
+    return result.sort_values("rpt_mth") if "rpt_mth" in df.columns else result
 
 
 def run(
@@ -30,7 +30,7 @@ def run(
     tr = checks_cfg.get("trends", {})
 
     ts_cfg = tr.get("time_series", {})
-    if ts_cfg.get("enabled", False) and "obs_month" in df.columns:
+    if ts_cfg.get("enabled", False) and "rpt_mth" in df.columns:
         findings += _run_time_series(df, ts_cfg, product)
 
     return findings
@@ -44,11 +44,11 @@ def run_account_tracking(
     at = checks_cfg.get("account_tracking", {})
     findings: list[Finding] = []
 
-    if not {"acct_id", "obs_month"}.issubset(df.columns):
+    if not {"eid", "rpt_mth"}.issubset(df.columns):
         return findings
 
-    last_records = df.groupby("acct_id", observed=True).last()
-    global_max = df["obs_month"].max()
+    last_records = df.groupby("eid", observed=True).last()
+    global_max = df["rpt_mth"].max()
 
     if at.get("right_censoring", {}).get("enabled", False):
         findings += _check_right_censoring(last_records, global_max, at["right_censoring"], product)
@@ -96,7 +96,7 @@ def _run_time_series(df: pd.DataFrame, cfg: dict, product: str) -> list[Finding]
         if not pd.api.types.is_numeric_dtype(df[var_name]):
             continue
 
-        monthly = df.groupby("obs_month")[var_name].agg(["mean", "std", "count"]).sort_index()
+        monthly = df.groupby("rpt_mth")[var_name].agg(["mean", "std", "count"]).sort_index()
 
         if len(monthly) < 4:
             continue
@@ -141,8 +141,8 @@ def _build_censored_mask(last_records: pd.DataFrame, global_max) -> pd.Series:
     # Exclude accounts still present in the last month — only flag those
     # that disappeared before the last observation month without reason
     cutoff = global_max - pd.DateOffset(months=1)
-    mask = last_records["obs_month"] < cutoff
-    for col in ["ind_closed", "ind_CO", "ind_dft"]:
+    mask = last_records["rpt_mth"] < cutoff
+    for col in ["fl_close", "fl_wo", "fl_evt"]:
         if col in last_records.columns:
             mask = mask & (last_records[col] != 1)
     return mask
@@ -173,7 +173,7 @@ def _check_right_censoring(
             f"These accounts cannot contribute complete event histories for ERL or DF estimation."
         ),
         check_id="AT1",
-        variable="acct_id",
+        variable="eid",
         stats={
             "censored_count": censored_count,
             "total_accounts": total_accounts,
@@ -186,25 +186,25 @@ def _check_censored_trend(
     df: pd.DataFrame, last_records: pd.DataFrame, global_max, product: str,
 ) -> list[Finding]:
     """AT2: Monthly attrition rate — accounts present this month but gone next month without reason."""
-    months = sorted(df["obs_month"].unique())
+    months = sorted(df["rpt_mth"].unique())
     if len(months) < 2:
         return []
 
-    indicator_cols = [c for c in ["ind_closed", "ind_CO", "ind_dft"] if c in df.columns]
-    acct_months = df[["acct_id", "obs_month"]].drop_duplicates()
-    present = acct_months.groupby("obs_month", observed=True)["acct_id"].count()
+    indicator_cols = [c for c in ["fl_close", "fl_wo", "fl_evt"] if c in df.columns]
+    acct_months = df[["eid", "rpt_mth"]].drop_duplicates()
+    present = acct_months.groupby("rpt_mth", observed=True)["eid"].count()
     trend = {}
     for i in range(len(months) - 1):
         m_curr, m_next = months[i], months[i + 1]
         n_active = int(present.get(m_curr, 0))
-        curr_accts = acct_months.loc[acct_months["obs_month"] == m_curr, "acct_id"]
-        next_accts = acct_months.loc[acct_months["obs_month"] == m_next, "acct_id"]
-        merged = curr_accts.to_frame().merge(next_accts.to_frame(), on="acct_id", how="left", indicator=True)
-        gone_ids = merged.loc[merged["_merge"] == "left_only", "acct_id"]
+        curr_accts = acct_months.loc[acct_months["rpt_mth"] == m_curr, "eid"]
+        next_accts = acct_months.loc[acct_months["rpt_mth"] == m_next, "eid"]
+        merged = curr_accts.to_frame().merge(next_accts.to_frame(), on="eid", how="left", indicator=True)
+        gone_ids = merged.loc[merged["_merge"] == "left_only", "eid"]
         if len(gone_ids) == 0 or n_active == 0:
             trend[str(m_curr)] = {"disappeared": 0, "active": n_active, "rate": 0.0}
             continue
-        dis_records = df.loc[(df["acct_id"].isin(gone_ids.values)) & (df["obs_month"] == m_curr)]
+        dis_records = df.loc[(df["eid"].isin(gone_ids.values)) & (df["rpt_mth"] == m_curr)]
         explained_mask = pd.Series(False, index=dis_records.index)
         for col in indicator_cols:
             explained_mask = explained_mask | (dis_records[col] == 1)
@@ -228,7 +228,7 @@ def _check_censored_trend(
             f"Accounts present in month t but absent in month t+1 without closure/CO/default."
         ),
         check_id="AT2",
-        variable="acct_id",
+        variable="eid",
         reference_only=True,
         stats={"attrition_trend": trend},
     )]
@@ -239,7 +239,7 @@ def _check_single_record(df: pd.DataFrame, cfg: dict, product: str) -> list[Find
     impact = cfg.get("impact", "High")
     parameter = cfg.get("parameter", ["ERL", "PD"])
 
-    counts = df.groupby("acct_id", observed=True).size()
+    counts = df.groupby("eid", observed=True).size()
     single = int((counts == 1).sum())
     total = len(counts)
     rate = single / total if total > 0 else 0
@@ -257,24 +257,24 @@ def _check_single_record(df: pd.DataFrame, cfg: dict, product: str) -> list[Find
             f"cure rate estimation, or ERL calculation."
         ),
         check_id="AT3",
-        variable="acct_id",
+        variable="eid",
         stats={"single_record_count": single, "rate": round(rate, 4)},
     )]
 
 
 def _check_record_gaps(df: pd.DataFrame, cfg: dict, product: str) -> list[Finding]:
-    """AT4: Accounts with gaps in obs_month sequence."""
+    """AT4: Accounts with gaps in rpt_mth sequence."""
     impact = cfg.get("impact", "High")
     parameter = cfg.get("parameter", ["Data", "ERL"])
     max_gap = cfg.get("max_allowed_gap_months", 1)
 
-    sorted_df = df[["acct_id", "obs_month"]]
+    sorted_df = df[["eid", "rpt_mth"]]
 
-    if pd.api.types.is_datetime64_any_dtype(sorted_df["obs_month"]):
-        month_diff = sorted_df.groupby("acct_id", observed=True)["obs_month"].diff().dt.days / 30.44
+    if pd.api.types.is_datetime64_any_dtype(sorted_df["rpt_mth"]):
+        month_diff = sorted_df.groupby("eid", observed=True)["rpt_mth"].diff().dt.days / 30.44
     else:
-        obs_num = pd.to_datetime(sorted_df["obs_month"]).astype(np.int64)
-        month_diff = sorted_df.groupby("acct_id", observed=True)[obs_num.name].diff() / (30.44 * 24 * 3600 * 1e9)
+        obs_num = pd.to_datetime(sorted_df["rpt_mth"]).astype(np.int64)
+        month_diff = sorted_df.groupby("eid", observed=True)[obs_num.name].diff() / (30.44 * 24 * 3600 * 1e9)
 
     gap_mask = month_diff > (max_gap + 0.5)
     gap_count = int(gap_mask.sum())
@@ -282,8 +282,8 @@ def _check_record_gaps(df: pd.DataFrame, cfg: dict, product: str) -> list[Findin
     if gap_count == 0:
         return []
 
-    gap_accounts = int(sorted_df.loc[gap_mask, "acct_id"].nunique())
-    total_accounts = int(sorted_df["acct_id"].nunique())
+    gap_accounts = int(sorted_df.loc[gap_mask, "eid"].nunique())
+    total_accounts = int(sorted_df["eid"].nunique())
 
     return [Finding(
         product=product,
@@ -291,13 +291,13 @@ def _check_record_gaps(df: pd.DataFrame, cfg: dict, product: str) -> list[Findin
         impact=impact,
         question=(
             f"{gap_accounts:,} accounts ({gap_accounts/total_accounts:.1%}) have gaps "
-            f"in their obs_month sequence exceeding {max_gap} month(s). "
+            f"in their rpt_mth sequence exceeding {max_gap} month(s). "
             f"Record gaps break cohort continuity and may cause incorrect "
             f"transition matrix estimation."
         ),
         check_id="AT4",
-        variable="acct_id",
-        case_data=_case_sample(df, gap_mask.reindex(df.index, fill_value=False), ["ind_closed", "ind_CO", "ind_dft", "dpd"]),
+        variable="eid",
+        case_data=_case_sample(df, gap_mask.reindex(df.index, fill_value=False), ["fl_close", "fl_wo", "fl_evt", "past_d"]),
         stats={"gap_accounts": gap_accounts, "total_gaps": gap_count,
                "affected_accounts": gap_accounts, "total_accounts": total_accounts,
                "account_rate": round(gap_accounts / total_accounts, 4) if total_accounts > 0 else 0},
@@ -311,7 +311,7 @@ def _check_incomplete_months(df: pd.DataFrame, cfg: dict, product: str) -> list[
     parameter = cfg.get("parameter", "Data")
     min_ratio = cfg.get("min_account_ratio", 0.5)
 
-    monthly_counts = df.groupby("obs_month")["acct_id"].nunique().sort_index()
+    monthly_counts = df.groupby("rpt_mth")["eid"].nunique().sort_index()
 
     if len(monthly_counts) < 3:
         return []
@@ -328,12 +328,12 @@ def _check_incomplete_months(df: pd.DataFrame, cfg: dict, product: str) -> list[
                 parameter=parameter,
                 impact=impact,
                 question=(
-                    f"obs_month {month} has {curr:,} unique accounts, "
+                    f"rpt_mth {month} has {curr:,} unique accounts, "
                     f"below {min_ratio:.0%} of the median ({median_count:.0f}). "
                     f"This suggests incomplete data extraction for that month."
                 ),
                 check_id="AT5",
-                variable="obs_month",
+                variable="rpt_mth",
                 stats={
                     "month": str(month),
                     "current_count": int(curr),
@@ -359,7 +359,7 @@ def _check_disappear_profile(
     if len(censored) < 10 or len(non_censored) < 10:
         return []
 
-    profile_vars = ["dpd", "balance", "score_orig", "score_bhv"]
+    profile_vars = ["past_d", "cur_amt", "sc_orig", "sc_curr"]
     comparison = {}
     for var in profile_vars:
         if var in last_records.columns and pd.api.types.is_numeric_dtype(last_records[var]):
@@ -389,29 +389,29 @@ def _check_disappear_profile(
             f"their exclusion will bias PD estimates downward."
         ),
         check_id="AT6",
-        variable="acct_id",
+        variable="eid",
         stats={"profile_comparison": comparison},
     )]
 
 
 def _check_left_censoring(df: pd.DataFrame, cfg: dict, product: str) -> list[Finding]:
-    """AT7: Accounts whose dt_opened is before the earliest obs_month in the dataset (left censoring)."""
+    """AT7: Accounts whose dt_start is before the earliest rpt_mth in the dataset (left censoring)."""
     impact = cfg.get("impact", "Medium")
     parameter = cfg.get("parameter", "Data")
 
-    if "dt_opened" not in df.columns or "obs_month" not in df.columns:
+    if "dt_start" not in df.columns or "rpt_mth" not in df.columns:
         return []
-    if not pd.api.types.is_datetime64_any_dtype(df["dt_opened"]):
+    if not pd.api.types.is_datetime64_any_dtype(df["dt_start"]):
         return []
 
-    window_start = df["obs_month"].min()
-    valid = df["dt_opened"].notna()
+    window_start = df["rpt_mth"].min()
+    valid = df["dt_start"].notna()
     if not valid.any():
         return []
 
-    left_censored = df.loc[valid, "dt_opened"] < window_start
-    lc_accts = df.loc[valid][left_censored].groupby("acct_id", observed=True).ngroups if "acct_id" in df.columns else int(left_censored.sum())
-    total_accts = df["acct_id"].nunique() if "acct_id" in df.columns else len(df)
+    left_censored = df.loc[valid, "dt_start"] < window_start
+    lc_accts = df.loc[valid][left_censored].groupby("eid", observed=True).ngroups if "eid" in df.columns else int(left_censored.sum())
+    total_accts = df["eid"].nunique() if "eid" in df.columns else len(df)
     rate = lc_accts / total_accts if total_accts > 0 else 0
 
     if lc_accts == 0:
@@ -422,11 +422,11 @@ def _check_left_censoring(df: pd.DataFrame, cfg: dict, product: str) -> list[Fin
         parameter=parameter,
         impact=impact,
         question=(
-            f"{lc_accts:,} accounts ({rate:.1%}) have dt_opened before data window start ({window_start}). "
+            f"{lc_accts:,} accounts ({rate:.1%}) have dt_start before data window start ({window_start}). "
             f"These left-censored accounts lack early-life history, which may bias survival analysis and ERL estimates."
         ),
         check_id="AT7",
-        variable="dt_opened",
+        variable="dt_start",
         stats={"left_censored_accounts": lc_accts, "total_accounts": total_accts, "rate": round(rate, 4)},
     )]
 
@@ -437,15 +437,15 @@ def _check_post_default_tracking(df: pd.DataFrame, cfg: dict, product: str) -> l
     parameter = cfg.get("parameter", "LGD")
     min_months = cfg.get("min_post_default_months", 12)
 
-    if "ind_dft" not in df.columns:
+    if "fl_evt" not in df.columns:
         return []
 
-    defaulted = df[df["ind_dft"] == 1]
+    defaulted = df[df["fl_evt"] == 1]
     if len(defaulted) == 0:
         return []
 
-    first_default = defaulted.groupby("acct_id", observed=True)["obs_month"].min()
-    last_record = df.groupby("acct_id", observed=True)["obs_month"].max()
+    first_default = defaulted.groupby("eid", observed=True)["rpt_mth"].min()
+    last_record = df.groupby("eid", observed=True)["rpt_mth"].max()
 
     common = first_default.index.intersection(last_record.index)
     if len(common) == 0:
@@ -454,7 +454,7 @@ def _check_post_default_tracking(df: pd.DataFrame, cfg: dict, product: str) -> l
     first_default = first_default[common]
     last_record = last_record[common]
 
-    if pd.api.types.is_datetime64_any_dtype(df["obs_month"]):
+    if pd.api.types.is_datetime64_any_dtype(df["rpt_mth"]):
         post_months = (last_record - first_default).dt.days / 30.44
     else:
         fd_dt = pd.to_datetime(first_default)
@@ -475,11 +475,11 @@ def _check_post_default_tracking(df: pd.DataFrame, cfg: dict, product: str) -> l
         question=(
             f"{under_tracked:,} defaulted accounts ({rate:.1%}) have fewer than "
             f"{min_months} months of post-default tracking. "
-            f"Insufficient workout period may lead to incomplete recovery "
+            f"Insufficient workout period may lead to incomplete rcv_amt "
             f"observation and LGD overestimation."
         ),
         check_id="AT8",
-        variable="ind_dft",
+        variable="fl_evt",
         stats={
             "under_tracked": under_tracked,
             "total_defaulted": total_defaulted,
@@ -493,7 +493,7 @@ def _check_disappear_classification(
     last_records: pd.DataFrame, global_max, at_cfg: dict, product: str,
 ) -> list[Finding]:
     """AT9: Classify disappeared accounts by final status."""
-    disappeared = last_records[last_records["obs_month"] < global_max]
+    disappeared = last_records[last_records["rpt_mth"] < global_max]
     if len(disappeared) == 0:
         return []
 
@@ -501,18 +501,18 @@ def _check_disappear_classification(
     cats = {}
 
     dft_mask = pd.Series(False, index=disappeared.index)
-    if "ind_dft" in disappeared.columns:
-        dft_mask = disappeared["ind_dft"] == 1
+    if "fl_evt" in disappeared.columns:
+        dft_mask = disappeared["fl_evt"] == 1
     cats["Default"] = int(dft_mask.sum())
 
     closed_mask = pd.Series(False, index=disappeared.index)
-    if "ind_closed" in disappeared.columns:
-        closed_mask = (disappeared["ind_closed"] == 1) & ~dft_mask
+    if "fl_close" in disappeared.columns:
+        closed_mask = (disappeared["fl_close"] == 1) & ~dft_mask
     cats["Closed"] = int(closed_mask.sum())
 
     excl_mask = pd.Series(False, index=disappeared.index)
-    if "perf_lvl1" in disappeared.columns:
-        excl_mask = (disappeared["perf_lvl1"] == 3) & ~dft_mask & ~closed_mask
+    if "grp1" in disappeared.columns:
+        excl_mask = (disappeared["grp1"] == 3) & ~dft_mask & ~closed_mask
     cats["Exclusion"] = int(excl_mask.sum())
 
     classified = dft_mask | closed_mask | excl_mask
@@ -533,7 +533,7 @@ def _check_disappear_classification(
             f"High censored proportion may bias survival analysis."
         ),
         check_id="AT9",
-        variable="acct_id",
+        variable="eid",
         reference_only=True,
         stats={"distribution": dist, "total_disappeared": total},
     )]

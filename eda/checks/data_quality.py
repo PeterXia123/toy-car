@@ -7,37 +7,37 @@ from eda.models import Finding, VariableInfo
 
 
 def _case_sample(df: pd.DataFrame, mask, cols: list[str]) -> pd.DataFrame | None:
-    if "acct_id" not in df.columns:
+    if "eid" not in df.columns:
         return None
-    affected = df.loc[mask, "acct_id"]
+    affected = df.loc[mask, "eid"]
     if len(affected) == 0:
         return None
     sample_id = affected.iloc[0]
-    base = ["acct_id", "obs_month"]
+    base = ["eid", "rpt_mth"]
     keep = [c for c in base if c in df.columns]
     keep += [c for c in cols if c in df.columns and c not in keep]
-    result = df.loc[df["acct_id"] == sample_id, keep]
-    return result.sort_values("obs_month") if "obs_month" in df.columns else result
+    result = df.loc[df["eid"] == sample_id, keep]
+    return result.sort_values("rpt_mth") if "rpt_mth" in df.columns else result
 
 
 _REQUIRED_COLUMNS = {
-    "obs_month": (["Data"], "Observation month is required for all time-series checks."),
-    "acct_id": (["Data"], "Account ID is required for account-level tracking and proportion calculation."),
-    "dpd": (["PD", "DF"], "Days past due is required for default definition and PD estimation."),
-    "ind_dft": (["PD", "DF"], "Default indicator is required for default rate and PD checks."),
-    "ind_closed": (["ERL", "LGD"], "Closure indicator is required for terminal event and LGD checks."),
-    "ind_CO": (["LGD"], "Charge-off indicator is required for LGD calculation."),
-    "balance": (["LGD", "EAD"], "Balance is required for LGD and EAD checks."),
-    "score_orig": (["Score_Alignment", "PD"], "Origination score is required for score-default alignment checks."),
-    "score_bhv": (["Score_Alignment", "SICR"], "Behavior score is required for SICR and score alignment checks."),
-    "perf_lvl1": (["Data"], "Performance level is required for default rate denominator and account classification."),
-    "dt_opened": (["Data", "DF"], "Open date is required for mob calculation and vintage analysis."),
-    "mob": (["DF", "ERL"], "Months on book is required for DF cohort and term structure estimation."),
-    "new_to_dft": (["PD"], "New-to-default indicator is required for PD transition rate calculation."),
-    "recovery": (["LGD"], "Recovery amount is required for LGD calculation."),
-    "next_dft_bal": (["LGD"], "Balance at default is required for LGD numerator calculation."),
-    "mths_to_dft": (["PD"], "Months to default is required for PD term structure estimation."),
-    "ind_restructure": (["Score_Alignment"], "Restructure indicator is required for score alignment exclusion logic."),
+    "rpt_mth": (["Data"], "Observation month is required for all time-series checks."),
+    "eid": (["Data"], "Account ID is required for account-level tracking and proportion calculation."),
+    "past_d": (["PD", "DF"], "Days past due is required for default definition and PD estimation."),
+    "fl_evt": (["PD", "DF"], "Default indicator is required for default rate and PD checks."),
+    "fl_close": (["ERL", "LGD"], "Closure indicator is required for terminal event and LGD checks."),
+    "fl_wo": (["LGD"], "Charge-off indicator is required for LGD calculation."),
+    "cur_amt": (["LGD", "EAD"], "Balance is required for LGD and EAD checks."),
+    "sc_orig": (["Score_Alignment", "PD"], "Origination score is required for score-default alignment checks."),
+    "sc_curr": (["Score_Alignment", "SICR"], "Behavior score is required for SICR and score alignment checks."),
+    "grp1": (["Data"], "Performance level is required for default rate denominator and account classification."),
+    "dt_start": (["Data", "DF"], "Open date is required for mos_bk calculation and vintage analysis."),
+    "mos_bk": (["DF", "ERL"], "Months on book is required for DF cohort and term structure estimation."),
+    "new_evt": (["PD"], "New-to-default indicator is required for PD transition rate calculation."),
+    "rcv_amt": (["LGD"], "Recovery amount is required for LGD calculation."),
+    "fwd_amt": (["LGD"], "Balance at default is required for LGD numerator calculation."),
+    "mos_to_evt": (["PD"], "Months to default is required for PD term structure estimation."),
+    "fl_restr": (["Score_Alignment"], "Restructure indicator is required for score alignment exclusion logic."),
 }
 
 
@@ -101,13 +101,13 @@ def check_missing_values(
     findings: list[Finding] = []
 
     # Variables that are naturally NaN for non-event accounts
-    skip_missing = {"next_dft_bal", "mths_to_dft"}
+    skip_missing = {"fwd_amt", "mos_to_evt"}
 
     missing_matrix = {}
-    has_month = "obs_month" in df.columns
+    has_month = "rpt_mth" in df.columns
 
     # Pre-compute monthly missing counts once for all variables (much faster than per-var lambda)
-    monthly_total = df.groupby("obs_month").size() if has_month else None
+    monthly_total = df.groupby("rpt_mth").size() if has_month else None
 
     for var_name, var_info in variables_cfg.items():
         if var_name not in df.columns:
@@ -121,7 +121,7 @@ def check_missing_values(
         if overall_rate > threshold:
             per_month = {}
             if has_month and monthly_total is not None:
-                monthly_na = df[var_name].isna().groupby(df["obs_month"]).sum()
+                monthly_na = df[var_name].isna().groupby(df["rpt_mth"]).sum()
                 monthly_rate = (monthly_na / monthly_total).fillna(0)
                 per_month = {str(k): round(float(v), 4) for k, v in monthly_rate.items()}
 
@@ -143,7 +143,7 @@ def check_missing_values(
         all_monthly = {}
         for var_name in missing_matrix:
             if var_name in df.columns:
-                monthly_na = df[var_name].isna().groupby(df["obs_month"]).sum()
+                monthly_na = df[var_name].isna().groupby(df["rpt_mth"]).sum()
                 monthly_rate = (monthly_na / monthly_total).fillna(0)
                 all_monthly[var_name] = {str(k): round(float(v), 4) for k, v in monthly_rate.items()}
 
@@ -187,7 +187,7 @@ def check_negative_values(
             continue
 
         neg_rate = neg_count / len(df)
-        ex_cols = [c for c in ["acct_id", "obs_month", var_name] if c in df.columns]
+        ex_cols = [c for c in ["eid", "rpt_mth", var_name] if c in df.columns]
         examples = df.loc[neg_mask, ex_cols].head(20)
 
         findings.append(Finding(
@@ -214,7 +214,7 @@ def check_record_count_drops(
     cfg: dict,
     product: str,
 ) -> list[Finding]:
-    if "obs_month" not in df.columns:
+    if "rpt_mth" not in df.columns:
         return []
 
     threshold = cfg.get("threshold", 0.10)
@@ -222,7 +222,7 @@ def check_record_count_drops(
     parameter = cfg.get("parameter", "Data")
     findings: list[Finding] = []
 
-    monthly_counts = df.groupby("obs_month").size().sort_index()
+    monthly_counts = df.groupby("rpt_mth").size().sort_index()
 
     for i in range(1, len(monthly_counts)):
         prev_count = monthly_counts.iloc[i - 1]
@@ -245,7 +245,7 @@ def check_record_count_drops(
                     f"This may indicate data truncation or incomplete extraction."
                 ),
                 check_id="DQ3",
-                variable="obs_month",
+                variable="rpt_mth",
                 stats={
                     "month": str(month),
                     "prev_count": int(prev_count),
@@ -261,7 +261,7 @@ def check_record_count_drops(
             impact="Low",
             question="Account count trend data generated.",
             check_id="DQ3_TREND",
-            variable="obs_month",
+            variable="rpt_mth",
             reference_only=True,
             stats={"account_counts": {str(k): int(v) for k, v in monthly_counts.items()}},
         ))
@@ -337,7 +337,7 @@ def check_extreme_values(
             ),
             check_id="DQ4",
             variable=var_name,
-            examples=df.loc[outlier_mask, [c for c in ["acct_id", "obs_month", var_name] if c in df.columns]].head(20),
+            examples=df.loc[outlier_mask, [c for c in ["eid", "rpt_mth", var_name] if c in df.columns]].head(20),
             stats={"outlier_count": int(outlier_count), "outlier_rate": round(outlier_rate, 4)},
         ))
 

@@ -74,7 +74,7 @@ def _pre_run_questions() -> list:
             "confirmed to align with the IFRS 9 default definition. Misalignment may "
             "invalidate PD calibration and score-default alignment checks.",
             "SA0",
-            "score_orig",
+            "sc_orig",
             ["Score_Alignment", "PD"],
         ),
         (

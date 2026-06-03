@@ -1,165 +1,165 @@
 variables:
-  obs_month:
+  rpt_mth:
     type: Date
     description: "Observation month"
     downstream: [Data, Score_Alignment, DF, EAD, LGD, ERL, SICR]
 
-  acct_id:
+  eid:
     type: ID
     description: "Account identifier"
     downstream: [Data]
 
-  dpd:
+  past_d:
     type: Term
     description: "Days past due"
     downstream: [Data, Score_Alignment, LGD, ERL]
     constraints:
       min: 0
 
-  cpd:
+  past_c:
     type: Term
     description: "Cycles past due"
     downstream: [Data, ERL]
     constraints:
       min: 0
 
-  recovery:
+  rcv_amt:
     type: Value
     description: "Recovery amount"
     downstream: [Data, LGD]
 
-  balance:
+  cur_amt:
     type: Value
-    description: "Account balance"
+    description: "Account cur_amt"
     downstream: [Data, LGD, EAD]
     constraints:
       min: 0
 
-  perf_lvl1:
+  grp1:
     type: Derived
     description: "Performance level 1"
     downstream: [Data, DF, SICR, EAD, Score_Alignment]
     valid_values: [0, 1, 2, 3, 4]
 
-  perf_lvl2:
+  grp2:
     type: Derived
     description: "Performance level 2"
     downstream: [Data, DF, Score_Alignment]
 
-  ind_closed:
+  fl_close:
     type: Status
     description: "Closed indicator"
     downstream: [Data, LGD, ERL]
     valid_values: [0, 1]
 
-  ind_CO:
+  fl_wo:
     type: Status
     description: "Charge-off indicator"
     downstream: [Data, LGD]
     valid_values: [0, 1]
 
-  ind_dft:
+  fl_evt:
     type: Derived
     description: "Default indicator"
     downstream: [Data, PD, ERL]
     valid_values: [0, 1]
 
-  lag_ind_dft:
+  lag_fl_evt:
     type: Derived
     description: "Lagged default indicator"
     downstream: [Data, PD]
     valid_values: [0, 1]
 
-  new_to_dft:
+  new_evt:
     type: Derived
     description: "New to default indicator"
     downstream: [Data, PD]
     valid_values: [0, 1]
 
-  score_orig:
+  sc_orig:
     type: Score
     description: "Origination score"
     downstream: [Score_Alignment, PD, SICR]
 
-  score_bhv:
+  sc_curr:
     type: Score
     description: "Behavior score"
     downstream: [Score_Alignment, PD, SICR]
 
-  dt_opened:
+  dt_start:
     type: Date
     description: "Account open date"
     downstream: [Data, Score_Alignment, DF, ERL, SICR, Downstream]
 
-  maturity_dt:
+  dt_end:
     type: Date
     description: "Maturity date"
     downstream: [Data, DF, ERL]
 
-  ln_term:
+  tot_term:
     type: Term
     description: "Loan term in months"
     downstream: [Data, DF, SICR]
     constraints:
       min: 0
 
-  remaining_term:
+  rem_term:
     type: Term
     description: "Remaining term in months"
     downstream: [Data, DF]
 
-  mob:
+  mos_bk:
     type: Term
     description: "Months on book"
     downstream: [DF, SICR, Score_Alignment]
     constraints:
       min: 0
 
-  interest_rate:
+  ann_rate:
     type: Rate
     description: "Interest rate"
     downstream: [LGD, EAD]
 
-  ln_value:
+  face_val:
     type: Value
     description: "Loan value"
     downstream: [Data, EAD]
     constraints:
       min: 0
 
-  booked_amt:
+  init_amt:
     type: Value
     description: "Booked amount"
     downstream: [Data]
     constraints:
       min: 0
 
-  ind_restructure:
+  fl_restr:
     type: Status
     description: "Restructure indicator"
     downstream: [Score_Alignment]
     valid_values: [0, 1]
 
-  next_dft_bal:
+  fwd_amt:
     type: Value
     description: "Balance at next default event"
     downstream: [LGD, EAD]
 
-  mths_to_dft:
+  mos_to_evt:
     type: Term
     description: "Months to default"
     downstream: [PD, DF]
     constraints:
       min: 0
 
-  cpd:
+  past_c:
     type: Term
     description: "Cycles past due"
     downstream: [Data, ERL]
     constraints:
       min: 0
 
-  credit_limit:
+  max_lim:
     type: Value
     description: "Credit limit (revolving products)"
     downstream: [EAD]

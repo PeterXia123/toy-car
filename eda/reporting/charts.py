@@ -213,7 +213,7 @@ def _plot_default_rate_trend(f: Finding, charts_dir: str) -> str | None:
 
     fig, ax = plt.subplots(figsize=(20, 6))
 
-    ax.plot(range(len(months)), dft_vals, marker="o", linewidth=2, color=_COLORS["red"], label="Default Rate (ind_dft)")
+    ax.plot(range(len(months)), dft_vals, marker="o", linewidth=2, color=_COLORS["red"], label="Default Rate (fl_evt)")
 
     if ntd_rate:
         ntd_vals = [ntd_rate.get(m, 0) for m in months]
@@ -457,7 +457,7 @@ def _plot_perf_lvl_distribution(f: Finding, charts_dir: str) -> str | None:
     for i, col in enumerate(sorted(df_dist.columns, key=lambda x: int(x))):
         vals = df_dist[col].values
         color = colors[int(col) % len(colors)]
-        ax.bar(range(len(df_dist)), vals, bottom=bottom, label=f"perf_lvl1={col}", color=color, alpha=0.8)
+        ax.bar(range(len(df_dist)), vals, bottom=bottom, label=f"grp1={col}", color=color, alpha=0.8)
         bottom += vals
 
     ax.set_ylabel("Proportion")
@@ -467,7 +467,7 @@ def _plot_perf_lvl_distribution(f: Finding, charts_dir: str) -> str | None:
     ax.yaxis.set_major_formatter(mticker.PercentFormatter(1.0))
     ax.legend(loc="upper right")
 
-    plt.title("perf_lvl1 Distribution Trend by Observation Month")
+    plt.title("grp1 Distribution Trend by Observation Month")
     plt.tight_layout()
 
     path = os.path.join(charts_dir, f"{f.check_id}_perf_lvl_dist.png")
@@ -640,7 +640,7 @@ def _plot_utilization_distribution(f: Finding, charts_dir: str) -> str | None:
     ax.set_xticks(range(len(buckets)))
     ax.set_xticklabels(buckets, rotation=45, ha="right", fontsize=8)
     ax.set_ylabel("Number of Records")
-    ax.set_xlabel("Utilization (balance / credit_limit)")
+    ax.set_xlabel("Utilization (cur_amt / max_lim)")
     ax.set_title("Utilization Distribution", fontsize=12, fontweight="bold", pad=12)
 
     note_parts = []
@@ -662,7 +662,7 @@ def _plot_utilization_distribution(f: Finding, charts_dir: str) -> str | None:
     ax.tick_params(axis="both", length=0)
     ax.grid(axis="y", alpha=0.2, linewidth=0.5)
 
-    fig.text(0.5, -0.05, "Remind: utilization >1 indicates balance exceeds credit limit — review CCF/EAD impact.",
+    fig.text(0.5, -0.05, "Remind: utilization >1 indicates cur_amt exceeds credit limit — review CCF/EAD impact.",
              ha="center", fontsize=9, color="#888888")
 
     plt.tight_layout(rect=[0, 0.08, 1, 1])

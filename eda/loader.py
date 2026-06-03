@@ -73,29 +73,29 @@ def apply_column_mapping(df: pd.DataFrame, mapping: dict[str, str]) -> pd.DataFr
 
 
 def _normalize_obs_month(df: pd.DataFrame) -> pd.DataFrame:
-    """Convert obs_month from int YYYYMM to datetime if needed."""
-    if "obs_month" not in df.columns:
+    """Convert rpt_mth from int YYYYMM to datetime if needed."""
+    if "rpt_mth" not in df.columns:
         return df
-    if pd.api.types.is_integer_dtype(df["obs_month"]):
-        df["obs_month"] = pd.to_datetime(df["obs_month"].astype(str), format="%Y%m")
-    elif pd.api.types.is_object_dtype(df["obs_month"]):
-        df["obs_month"] = pd.to_datetime(df["obs_month"])
+    if pd.api.types.is_integer_dtype(df["rpt_mth"]):
+        df["rpt_mth"] = pd.to_datetime(df["rpt_mth"].astype(str), format="%Y%m")
+    elif pd.api.types.is_object_dtype(df["rpt_mth"]):
+        df["rpt_mth"] = pd.to_datetime(df["rpt_mth"])
     return df
 
 
 def _normalize_indicators(df: pd.DataFrame) -> pd.DataFrame:
     """Fill NaN in binary indicator columns with 0 and downcast to int8."""
     indicator_cols = [
-        "ind_closed", "ind_CO", "ind_dft", "ind_excl",
-        "new_to_dft", "new_to_CO", "lag_ind_dft", "lag_ind_CO",
-        "ind_restructure",
+        "fl_close", "fl_wo", "fl_evt", "fl_excl",
+        "new_evt", "new_wo", "lag_fl_evt", "lag_fl_wo",
+        "fl_restr",
     ]
     for col in indicator_cols:
         if col in df.columns and df[col].dtype == np.float64:
             df[col] = df[col].fillna(0).astype(np.int8)
 
-    if "recovery" in df.columns:
-        df["recovery"] = df["recovery"].fillna(0)
+    if "rcv_amt" in df.columns:
+        df["rcv_amt"] = df["rcv_amt"].fillna(0)
 
     return df
 
@@ -119,14 +119,14 @@ def _optimize_dtypes(df: pd.DataFrame) -> pd.DataFrame:
 
 def apply_filters(df: pd.DataFrame, filters: dict) -> pd.DataFrame:
     exclude = filters.get("exclude_months", [])
-    if exclude and "obs_month" in df.columns:
-        if pd.api.types.is_datetime64_any_dtype(df["obs_month"]):
+    if exclude and "rpt_mth" in df.columns:
+        if pd.api.types.is_datetime64_any_dtype(df["rpt_mth"]):
             exclude = pd.to_datetime(exclude)
-        df = df[~df["obs_month"].isin(exclude)]
+        df = df[~df["rpt_mth"].isin(exclude)]
 
     lvl_filter = filters.get("perf_lvl1_filter")
-    if lvl_filter is not None and "perf_lvl1" in df.columns:
-        df = df[df["perf_lvl1"] == lvl_filter]
+    if lvl_filter is not None and "grp1" in df.columns:
+        df = df[df["grp1"] == lvl_filter]
 
     return df
 
