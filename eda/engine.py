@@ -128,6 +128,7 @@ def run_validation(
     import gc; gc.collect()
 
     findings.sort(key=finding_sort_key)
+    _apply_display_names(findings)
 
     _ensure_output_dirs(project_cfg)
 
@@ -156,6 +157,48 @@ def run_validation(
     print(f"{'='*60}")
 
     return findings
+
+
+_DISPLAY_NAMES = {
+    "rpt_mth": "obs_month",
+    "eid": "acct_id",
+    "past_d": "dpd",
+    "past_c": "cpd",
+    "cur_amt": "balance",
+    "fl_close": "ind_closed",
+    "fl_wo": "ind_CO",
+    "fl_evt": "ind_dft",
+    "lag_fl_evt": "lag_ind_dft",
+    "new_evt": "new_to_dft",
+    "lag_fl_wo": "lag_ind_CO",
+    "new_wo": "new_to_CO",
+    "fl_excl": "ind_excl",
+    "fl_restr": "ind_restructure",
+    "sc_orig": "score_orig",
+    "sc_curr": "score_bhv",
+    "grp1": "perf_lvl1",
+    "grp2": "perf_lvl2",
+    "dt_start": "dt_opened",
+    "dt_end": "maturity_dt",
+    "tot_term": "ln_term",
+    "rem_term": "remaining_term",
+    "mos_bk": "mob",
+    "rcv_amt": "recovery",
+    "ann_rate": "interest_rate",
+    "face_val": "ln_value",
+    "init_amt": "booked_amt",
+    "fwd_amt": "next_dft_bal",
+    "mos_to_evt": "mths_to_dft",
+    "max_lim": "credit_limit",
+}
+
+
+def _apply_display_names(findings: list[Finding]) -> None:
+    for f in findings:
+        for internal, display in _DISPLAY_NAMES.items():
+            f.question = f.question.replace(internal, display)
+        if f.variable in _DISPLAY_NAMES:
+            f.variable = _DISPLAY_NAMES[f.variable]
 
 
 def _should_run(category: str, only: list[str] | None) -> bool:
