@@ -319,7 +319,7 @@ def _plot_censored_accounts(f: Finding, charts_dir: str) -> str | None:
     for bar, d, a in zip(bars, disappeared, active):
         if d > 0:
             ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.001,
-                     f"{d}/{a}", ha="center", va="bottom", fontsize=8, color="#666")
+                     f"{d}/{a}", ha="center", va="bottom", fontsize=8, color="#666666")
 
     avg_rate = sum(rates) / len(rates) if rates else 0
     ax1.axhline(y=avg_rate, color=_COLORS["red"], linestyle="--", alpha=0.7,
@@ -874,7 +874,7 @@ def _plot_lgd_workout(f: Finding, charts_dir: str) -> str | None:
     for bar, c in zip(bars, counts):
         if c > 0:
             ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.005, f"n={c}",
-                     ha="center", va="bottom", fontsize=8, color="#333")
+                     ha="center", va="bottom", fontsize=8, color="#333333")
 
     ax1.set_xticks(x)
     ax1.set_xticklabels([str(m)[:7] for m in months], rotation=45, ha="right")
@@ -919,7 +919,7 @@ def _plot_recovery_pattern(f: Finding, charts_dir: str) -> str | None:
     ax.bar(x, pct_pos, 0.7, bottom=bottom_pos, label="Positive (> 0)", color=_COLORS["green"], alpha=0.85)
 
     for i, c in enumerate(counts):
-        ax.text(i, 1.02, f"n={c}", ha="center", va="bottom", fontsize=7, color="#333")
+        ax.text(i, 1.02, f"n={c}", ha="center", va="bottom", fontsize=7, color="#333333")
 
     ax.set_xticks(x)
     ax.set_xticklabels([str(m)[:7] for m in months], rotation=45, ha="right")
