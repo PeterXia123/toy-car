@@ -80,6 +80,8 @@ class VariableInfo:
     description: str = ""
     constraints: dict[str, Any] = field(default_factory=dict)
     valid_values: list | None = None
+    expected_dtype: str = ""
+    format_hint: str = ""
 
 
 @dataclass

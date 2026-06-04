@@ -40,7 +40,7 @@ def run_validation(
     print(f"Country: {project_cfg.country} | Product: {project_cfg.product} | Type: {project_cfg.product_type}")
     print(f"Loading data...")
 
-    df = load_data(project_cfg)
+    df = load_data(project_cfg, variables_cfg)
 
     # Keep only columns used by checks — drop everything else to save memory
     keep_cols = set(variables_cfg.keys()) | {

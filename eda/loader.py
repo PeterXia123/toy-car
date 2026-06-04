@@ -30,6 +30,8 @@ def load_variables_config(path: str) -> dict[str, VariableInfo]:
             description=info.get("description", ""),
             constraints=info.get("constraints", {}),
             valid_values=info.get("valid_values"),
+            expected_dtype=info.get("dtype", ""),
+            format_hint=info.get("format", ""),
         )
     return variables
 
@@ -38,7 +40,10 @@ def load_checks_config(path: str) -> dict:
     return load_yaml(path)
 
 
-def load_data(project: ProjectConfig) -> pd.DataFrame:
+def load_data(
+    project: ProjectConfig,
+    variables_config: dict[str, VariableInfo] | None = None,
+) -> pd.DataFrame:
     file_path = os.path.join(project.data_path, project.data_file)
     if not os.path.exists(file_path):
         alt = Path(project.data_file)
@@ -55,6 +60,8 @@ def load_data(project: ProjectConfig) -> pd.DataFrame:
         raise ValueError(f"Unsupported format: {project.data_format}")
 
     df = apply_column_mapping(df, project.column_mapping)
+    if variables_config:
+        validate_input_dtypes(df, project.column_mapping, variables_config)
     df = _normalize_obs_month(df)
     df = _normalize_indicators(df)
     df = apply_filters(df, project.filters)
@@ -72,12 +79,121 @@ def apply_column_mapping(df: pd.DataFrame, mapping: dict[str, str]) -> pd.DataFr
     return df
 
 
+_DTYPE_OK = {
+    "integer": lambda dt: pd.api.types.is_integer_dtype(dt),
+    "float": lambda dt: pd.api.types.is_numeric_dtype(dt),
+    "datetime": lambda dt: pd.api.types.is_datetime64_any_dtype(dt),
+    "string": lambda dt: pd.api.types.is_object_dtype(dt) or pd.api.types.is_string_dtype(dt),
+}
+
+_DTYPE_COMPAT = {
+    "integer": lambda dt: pd.api.types.is_float_dtype(dt),
+    "datetime": lambda dt: pd.api.types.is_object_dtype(dt),
+}
+
+_FIX_HINTS = {
+    "integer": "df['{col}'] = df['{col}'].fillna(0).astype(int)",
+    "float": "df['{col}'] = pd.to_numeric(df['{col}'], errors='coerce')",
+    "datetime": "df['{col}'] = pd.to_datetime(df['{col}'])",
+    "string": "df['{col}'] = df['{col}'].astype(str)",
+}
+
+
+def validate_input_dtypes(
+    df: pd.DataFrame,
+    column_mapping: dict[str, str],
+    variables_config: dict[str, VariableInfo],
+) -> None:
+    errors = []
+    warns = []
+    n_ok = 0
+
+    for var_name, var_info in variables_config.items():
+        if var_name not in df.columns or not var_info.expected_dtype:
+            continue
+
+        display = column_mapping.get(var_name, var_name)
+        actual = df[var_name].dtype
+        expected = var_info.expected_dtype
+
+        if var_info.var_type == "Date":
+            if pd.api.types.is_datetime64_any_dtype(actual):
+                n_ok += 1
+                continue
+            if pd.api.types.is_float_dtype(actual):
+                warns.append((display, expected, str(actual), var_info.format_hint,
+                              "NaN present -> float promotion, will auto-convert"))
+                continue
+            if pd.api.types.is_integer_dtype(actual):
+                n_ok += 1
+                continue
+            if pd.api.types.is_object_dtype(actual):
+                warns.append((display, expected, str(actual), var_info.format_hint,
+                              "String dates detected, will attempt auto-parse"))
+                continue
+            errors.append((display, expected, str(actual), var_info.format_hint))
+            continue
+
+        ok_fn = _DTYPE_OK.get(expected)
+        if ok_fn and ok_fn(actual):
+            n_ok += 1
+            continue
+
+        compat_fn = _DTYPE_COMPAT.get(expected)
+        if compat_fn and compat_fn(actual):
+            reason = "NaN present -> float promotion, will auto-convert"
+            if expected == "datetime" and pd.api.types.is_object_dtype(actual):
+                reason = "String dates detected, will attempt auto-parse"
+            warns.append((display, expected, str(actual), var_info.format_hint, reason))
+            continue
+
+        errors.append((display, expected, str(actual), var_info.format_hint))
+
+    total = n_ok + len(warns) + len(errors)
+    if not warns and not errors:
+        print(f"  Data format validation: {total} columns checked, all OK")
+        return
+
+    print(f"\n{'='*60}")
+    print(f"DATA FORMAT VALIDATION")
+    print(f"{'='*60}")
+    print(f"Checked {total} columns: {n_ok} OK, {len(warns)} warning(s), {len(errors)} error(s)\n")
+
+    for display, expected, actual, fmt, reason in warns:
+        label = f"{expected} ({fmt})" if fmt else expected
+        print(f"  [WARN] {display}: expected {label}, got {actual}")
+        print(f"         {reason}\n")
+
+    for display, expected, actual, fmt in errors:
+        label = f"{expected} ({fmt})" if fmt else expected
+        fix = _FIX_HINTS.get(expected, "").format(col=display)
+        print(f"  [FAIL] {display}: expected {label}, got {actual}")
+        if fix:
+            print(f"         Fix: {fix}")
+        print()
+
+    print(f"{'='*60}\n")
+
+    if errors:
+        cols = ", ".join(e[0] for e in errors)
+        raise ValueError(
+            f"Data validation failed: {len(errors)} column(s) have incompatible dtypes "
+            f"({cols}). Please fix and re-run."
+        )
+
+
 def _normalize_obs_month(df: pd.DataFrame) -> pd.DataFrame:
-    """Convert rpt_mth from int YYYYMM to datetime if needed."""
+    """Convert rpt_mth from int/float YYYYMM to datetime if needed."""
     if "rpt_mth" not in df.columns:
         return df
     if pd.api.types.is_integer_dtype(df["rpt_mth"]):
         df["rpt_mth"] = pd.to_datetime(df["rpt_mth"].astype(str), format="%Y%m")
+    elif pd.api.types.is_float_dtype(df["rpt_mth"]):
+        df["rpt_mth"] = pd.to_datetime(
+            df["rpt_mth"].fillna(0).round().astype("int64").astype(str),
+            format="%Y%m",
+            errors="coerce",
+        )
     elif pd.api.types.is_object_dtype(df["rpt_mth"]):
         df["rpt_mth"] = pd.to_datetime(df["rpt_mth"])
     return df

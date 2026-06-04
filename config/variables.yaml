@@ -1,8 +1,8 @@
 variables:
   rpt_mth:
     type: Date
-    dtype: datetime
-    format: "YYYY-MM-DD or YYYYMM"
+    dtype: integer
+    format: "YYYYMM (e.g. 202106)"
     description: "Observation month"
     downstream: [Data, Score_Alignment, DF, EAD, LGD, ERL, SICR]
 
@@ -45,20 +45,23 @@ variables:
   grp1:
     type: Derived
     dtype: integer
-    description: "Performance level 1 (0=functional, 1=default, 2=chargeoff, 3=closed, 4=excluded)"
+    format: "0-4 (0=functional, 1=default, 2=chargeoff, 3=closed, 4=excluded)"
+    description: "Performance level 1"
     downstream: [Data, DF, SICR, EAD, Score_Alignment]
     valid_values: [0, 1, 2, 3, 4]
 
   grp2:
     type: Derived
     dtype: integer
-    description: "Performance level 2 — 12-month forward default indicator (0=no default, 1=will default)"
+    format: "0 or 1"
+    description: "Performance level 2 - 12-month forward default indicator (0=no default, 1=will default)"
     downstream: [Data, DF, Score_Alignment]
     valid_values: [0, 1]
 
   fl_close:
     type: Status
     dtype: integer
+    format: "0 or 1"
     description: "Closed indicator"
     downstream: [Data, LGD, ERL]
     valid_values: [0, 1]
@@ -66,6 +69,7 @@ variables:
   fl_wo:
     type: Status
     dtype: integer
+    format: "0 or 1"
     description: "Charge-off indicator"
     downstream: [Data, LGD]
     valid_values: [0, 1]
@@ -73,6 +77,7 @@ variables:
   fl_evt:
     type: Derived
     dtype: integer
+    format: "0 or 1"
     description: "Default indicator (point-in-time)"
     downstream: [Data, PD, ERL]
     valid_values: [0, 1]
@@ -80,6 +85,7 @@ variables:
   lag_fl_evt:
     type: Derived
     dtype: integer
+    format: "0 or 1"
     description: "Lagged default indicator (previous month)"
     downstream: [Data, PD]
     valid_values: [0, 1]
@@ -87,6 +93,7 @@ variables:
   new_evt:
     type: Derived
     dtype: integer
+    format: "0 or 1"
     description: "New to default indicator"
     downstream: [Data, PD]
     valid_values: [0, 1]
@@ -94,6 +101,7 @@ variables:
   sc_orig:
     type: Score
     dtype: float
+    format: "numeric 0-999"
     description: "Origination score (analyze on mob < 6)"
     downstream: [Score_Alignment, PD, SICR]
     constraints:
@@ -103,6 +111,7 @@ variables:
   sc_curr:
     type: Score
     dtype: float
+    format: "numeric 0-999"
     description: "Behavior score (analyze on mob >= 6)"
     downstream: [Score_Alignment, PD, SICR]
     constraints:
@@ -151,7 +160,7 @@ variables:
   ann_rate:
     type: Rate
     dtype: float
-    format: "decimal (e.g. 0.055 = 5.5%)"
+    format: "decimal (0.055 = 5.5%)"
     description: "Annualized interest rate"
     downstream: [LGD, EAD]
     constraints:
@@ -177,6 +186,7 @@ variables:
   fl_restr:
     type: Status
     dtype: integer
+    format: "0 or 1"
     description: "Restructure indicator"
     downstream: [Score_Alignment]
     valid_values: [0, 1]
@@ -203,3 +213,11 @@ variables:
     downstream: [EAD]
     constraints:
       min: 0
+
+  fl_excl:
+    type: Status
+    dtype: integer
+    format: "0 or 1"
+    description: "Exclusion indicator"
+    downstream: [Data]
+    valid_values: [0, 1]
