@@ -1,16 +1,20 @@
 variables:
   rpt_mth:
     type: Date
+    dtype: datetime
+    format: "YYYY-MM-DD or YYYYMM"
     description: "Observation month"
     downstream: [Data, Score_Alignment, DF, EAD, LGD, ERL, SICR]
 
   eid:
     type: ID
+    dtype: string
     description: "Account identifier"
     downstream: [Data]
 
   past_d:
     type: Term
+    dtype: integer
     description: "Days past due"
     downstream: [Data, Score_Alignment, LGD, ERL]
     constraints:
@@ -18,6 +22,7 @@ variables:
 
   past_c:
     type: Term
+    dtype: integer
     description: "Cycles past due"
     downstream: [Data, ERL]
     constraints:
@@ -25,79 +30,103 @@ variables:
 
   rcv_amt:
     type: Value
+    dtype: float
     description: "Recovery amount"
     downstream: [Data, LGD]
 
   cur_amt:
     type: Value
-    description: "Account cur_amt"
+    dtype: float
+    description: "Account balance"
     downstream: [Data, LGD, EAD]
     constraints:
       min: 0
 
   grp1:
     type: Derived
-    description: "Performance level 1"
+    dtype: integer
+    description: "Performance level 1 (0=functional, 1=default, 2=chargeoff, 3=closed, 4=excluded)"
     downstream: [Data, DF, SICR, EAD, Score_Alignment]
     valid_values: [0, 1, 2, 3, 4]
 
   grp2:
     type: Derived
-    description: "Performance level 2"
+    dtype: integer
+    description: "Performance level 2 — 12-month forward default indicator (0=no default, 1=will default)"
     downstream: [Data, DF, Score_Alignment]
+    valid_values: [0, 1]
 
   fl_close:
     type: Status
+    dtype: integer
     description: "Closed indicator"
     downstream: [Data, LGD, ERL]
     valid_values: [0, 1]
 
   fl_wo:
     type: Status
+    dtype: integer
     description: "Charge-off indicator"
     downstream: [Data, LGD]
     valid_values: [0, 1]
 
   fl_evt:
     type: Derived
-    description: "Default indicator"
+    dtype: integer
+    description: "Default indicator (point-in-time)"
     downstream: [Data, PD, ERL]
     valid_values: [0, 1]
 
   lag_fl_evt:
     type: Derived
-    description: "Lagged default indicator"
+    dtype: integer
+    description: "Lagged default indicator (previous month)"
     downstream: [Data, PD]
     valid_values: [0, 1]
 
   new_evt:
     type: Derived
+    dtype: integer
     description: "New to default indicator"
     downstream: [Data, PD]
     valid_values: [0, 1]
 
   sc_orig:
     type: Score
-    description: "Origination score"
+    dtype: float
+    description: "Origination score (analyze on mob < 6)"
     downstream: [Score_Alignment, PD, SICR]
+    constraints:
+      min: 0
+      max: 999
 
   sc_curr:
     type: Score
-    description: "Behavior score"
+    dtype: float
+    description: "Behavior score (analyze on mob >= 6)"
     downstream: [Score_Alignment, PD, SICR]
+    constraints:
+      min: 0
+      max: 999
 
   dt_start:
     type: Date
+    dtype: datetime
+    format: "YYYY-MM-DD"
     description: "Account open date"
-    downstream: [Data, Score_Alignment, DF, ERL, SICR, Downstream]
+    downstream: [Data, Score_Alignment, DF, ERL, SICR]
 
   dt_end:
     type: Date
+    dtype: datetime
+    format: "YYYY-MM-DD"
     description: "Maturity date"
     downstream: [Data, DF, ERL]
 
   tot_term:
     type: Term
+    dtype: integer
+    unit: months
     description: "Loan term in months"
     downstream: [Data, DF, SICR]
     constraints:
@@ -105,11 +134,15 @@ variables:
 
   rem_term:
     type: Term
+    dtype: integer
+    unit: months
     description: "Remaining term in months"
     downstream: [Data, DF]
 
   mos_bk:
     type: Term
+    dtype: integer
+    unit: months
     description: "Months on book"
     downstream: [DF, SICR, Score_Alignment]
     constraints:
@@ -117,51 +150,56 @@ variables:
 
   ann_rate:
     type: Rate
-    description: "Interest rate"
+    dtype: float
+    format: "decimal (e.g. 0.055 = 5.5%)"
+    description: "Annualized interest rate"
     downstream: [LGD, EAD]
+    constraints:
+      min: 0
+      max: 1
 
   face_val:
     type: Value
-    description: "Loan value"
+    dtype: float
+    description: "Original loan value"
     downstream: [Data, EAD]
     constraints:
       min: 0
 
   init_amt:
     type: Value
-    description: "Booked amount"
+    dtype: float
+    description: "Booked amount at origination"
     downstream: [Data]
     constraints:
       min: 0
 
   fl_restr:
     type: Status
+    dtype: integer
     description: "Restructure indicator"
     downstream: [Score_Alignment]
     valid_values: [0, 1]
 
   fwd_amt:
     type: Value
+    dtype: float
     description: "Balance at next default event"
     downstream: [LGD, EAD]
 
   mos_to_evt:
     type: Term
-    description: "Months to default"
+    dtype: float
+    unit: months
+    description: "Months to default event"
     downstream: [PD, DF]
-    constraints:
-      min: 0
-
-  past_c:
-    type: Term
-    description: "Cycles past due"
-    downstream: [Data, ERL]
     constraints:
       min: 0
 
   max_lim:
     type: Value
-    description: "Credit limit (revolving products)"
+    dtype: float
+    description: "Credit limit (revolving products only)"
     downstream: [EAD]
     constraints:
       min: 0
