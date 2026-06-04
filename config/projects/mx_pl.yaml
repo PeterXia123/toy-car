@@ -1,0 +1,46 @@
+project:
+  name: "MX Personal Loan Validation"
+  country: MX
+  product: PL
+  product_type: term
+  entity: "BNS-PL"
+
+data:
+  path: ""
+  file: "/path/to/your/mx_pl_perf.parquet"
+  format: parquet
+
+column_mapping:
+  rpt_mth: obs_month
+  eid: acct_id
+  past_d: dpd
+  past_c: cpd
+  cur_amt: balance
+  rcv_amt: recovery
+  fl_evt: ind_dft
+  fl_wo: ind_CO
+  fl_close: ind_closed
+  new_evt: new_to_dft
+  lag_fl_evt: lag_ind_dft
+  sc_orig: score_orig
+  sc_curr: score_bhv
+  dt_start: dt_opened
+  mos_bk: mob
+  ann_rate: interest_rate
+  grp1: perf_lvl1
+  grp2: perf_lvl2
+  dt_end: dt_maturity
+  tot_term: ln_term
+  rem_term: remaining_term
+  fl_restr: ind_restructure
+  face_val: ln_value
+  fl_excl: ind_excl
+  fwd_amt: next_dft_bal
+  mos_to_evt: mths_to_dft
+
+filters: {}
+
+output:
+  directory: "output/mx_pl/"
+  issue_log: "Issue_Log_MX_PL.xlsx"
+  charts_dir: "output/mx_pl/charts/"
