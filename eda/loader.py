@@ -176,11 +176,11 @@ def validate_input_dtypes(
     print(f"{'='*60}\n")
 
     if errors:
-        cols = ", ".join(e[0] for e in errors)
-        raise ValueError(
-            f"Data validation failed: {len(errors)} column(s) have incompatible dtypes "
-            f"({cols}). Please fix and re-run."
+        details = "; ".join(
+            f"{col} -> convert to {exp}" + (f" ({fmt})" if fmt else "")
+            for col, exp, _, fmt in errors
         )
+        raise ValueError(f"Data validation failed: {details}")
 
 
 def _normalize_obs_month(df: pd.DataFrame) -> pd.DataFrame:
