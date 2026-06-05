@@ -122,6 +122,10 @@ def validate_input_dtypes(
                 n_ok += 1
                 continue
             if pd.api.types.is_float_dtype(actual):
+                vals = df[var_name].dropna()
+                if len(vals) > 0 and not (vals == vals.astype("int64")).all():
+                    errors.append((display, expected, str(actual), var_info.format_hint))
+                    continue
                 warns.append((display, expected, str(actual), var_info.format_hint,
                               "NaN present -> float promotion, will auto-convert"))
                 continue
@@ -142,9 +146,16 @@ def validate_input_dtypes(
 
         compat_fn = _DTYPE_COMPAT.get(expected)
         if compat_fn and compat_fn(actual):
-            reason = "NaN present -> float promotion, will auto-convert"
-            if expected == "datetime" and pd.api.types.is_object_dtype(actual):
+            if expected == "integer" and pd.api.types.is_float_dtype(actual):
+                vals = df[var_name].dropna()
+                if len(vals) > 0 and not (vals == vals.astype("int64")).all():
+                    errors.append((display, expected, str(actual), var_info.format_hint))
+                    continue
+                reason = "NaN present -> float promotion, will auto-convert"
+            elif expected == "datetime" and pd.api.types.is_object_dtype(actual):
                 reason = "String dates detected, will attempt auto-parse"
+            else:
+                reason = "NaN present -> float promotion, will auto-convert"
             warns.append((display, expected, str(actual), var_info.format_hint, reason))
             continue
 
