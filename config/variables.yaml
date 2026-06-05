@@ -1,7 +1,7 @@
 variables:
   rpt_mth:
     type: Date
-    dtype: integer
+    dtype: float
     format: "YYYYMM (e.g. 202106)"
     description: "Observation month"
     downstream: [Data, Score_Alignment, DF, EAD, LGD, ERL, SICR]
@@ -44,7 +44,7 @@ variables:
 
   grp1:
     type: Derived
-    dtype: integer
+    dtype: float
     format: "0-4 (0=functional, 1=default, 2=chargeoff, 3=closed, 4=excluded)"
     description: "Performance level 1"
     downstream: [Data, DF, SICR, EAD, Score_Alignment]
@@ -52,7 +52,7 @@ variables:
 
   grp2:
     type: Derived
-    dtype: integer
+    dtype: float
     format: "0 or 1"
     description: "Performance level 2 - 12-month forward default indicator (0=no default, 1=will default)"
     downstream: [Data, DF, Score_Alignment]
@@ -60,7 +60,7 @@ variables:
 
   fl_close:
     type: Status
-    dtype: integer
+    dtype: float
     format: "0 or 1"
     description: "Closed indicator"
     downstream: [Data, LGD, ERL]
@@ -68,7 +68,7 @@ variables:
 
   fl_wo:
     type: Status
-    dtype: integer
+    dtype: float
     format: "0 or 1"
     description: "Charge-off indicator"
     downstream: [Data, LGD]
@@ -76,7 +76,7 @@ variables:
 
   fl_evt:
     type: Derived
-    dtype: integer
+    dtype: float
     format: "0 or 1"
     description: "Default indicator (point-in-time)"
     downstream: [Data, PD, ERL]
@@ -84,7 +84,7 @@ variables:
 
   lag_fl_evt:
     type: Derived
-    dtype: integer
+    dtype: float
     format: "0 or 1"
     description: "Lagged default indicator (previous month)"
     downstream: [Data, PD]
@@ -92,7 +92,7 @@ variables:
 
   new_evt:
     type: Derived
-    dtype: integer
+    dtype: float
     format: "0 or 1"
     description: "New to default indicator"
     downstream: [Data, PD]
@@ -185,7 +185,7 @@ variables:
 
   fl_restr:
     type: Status
-    dtype: integer
+    dtype: float
     format: "0 or 1"
     description: "Restructure indicator"
     downstream: [Score_Alignment]
@@ -216,7 +216,7 @@ variables:
 
   fl_excl:
     type: Status
-    dtype: integer
+    dtype: float
     format: "0 or 1"
     description: "Exclusion indicator"
     downstream: [Data]
