@@ -8,7 +8,7 @@ variables:
 
   eid:
     type: ID
-    dtype: string
+    dtype: string_or_integer
     description: "Account identifier"
     downstream: [Data]
 

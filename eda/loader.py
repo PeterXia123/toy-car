@@ -84,6 +84,7 @@ _DTYPE_OK = {
     "float": lambda dt: pd.api.types.is_numeric_dtype(dt),
     "datetime": lambda dt: pd.api.types.is_datetime64_any_dtype(dt),
     "string": lambda dt: pd.api.types.is_object_dtype(dt) or pd.api.types.is_string_dtype(dt),
+    "string_or_integer": lambda dt: True,
 }
 
 _DTYPE_COMPAT = {
