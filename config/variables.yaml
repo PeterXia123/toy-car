@@ -14,7 +14,7 @@ variables:
 
   past_d:
     type: Term
-    dtype: integer
+    dtype: float
     description: "Days past due"
     downstream: [Data, Score_Alignment, LGD, ERL]
     constraints:
@@ -22,7 +22,7 @@ variables:
 
   past_c:
     type: Term
-    dtype: integer
+    dtype: float
     description: "Cycles past due"
     downstream: [Data, ERL]
     constraints:
@@ -150,7 +150,7 @@ variables:
 
   mos_bk:
     type: Term
-    dtype: integer
+    dtype: float
     unit: months
     description: "Months on book"
     downstream: [DF, SICR, Score_Alignment]
